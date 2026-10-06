@@ -64,6 +64,15 @@ export function makeCamera(yaw = 0, pitch = 0): Camera {
   return { pos, right, up, fwd };
 }
 
+/** Camera at `pos` looking along `dir` (used for the photon's first-person view). */
+export function cameraLookAlong(pos: Vec3, dir: Vec3): Camera {
+  const fwd = norm(dir);
+  const upHint: Vec3 = Math.abs(fwd[1]) > 0.97 ? [0, 0, 1] : [0, 1, 0];
+  const right = norm(cross(fwd, upHint));
+  const up = cross(right, fwd);
+  return { pos, right, up, fwd };
+}
+
 export const cameraOf = (scene: SceneState): Camera => makeCamera(scene.camera.yaw, scene.camera.pitch);
 
 /** Direction of the view ray through a screen position in [-1,1] (x right, y up). */

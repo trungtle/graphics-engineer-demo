@@ -22,6 +22,9 @@ uniform vec3 u_camPos;
 uniform vec3 u_camRight;
 uniform vec3 u_camUp;
 uniform vec3 u_camFwd;
+uniform int u_inside;       // 1: camera is inside the box (photon view), no front-plane entry
+uniform float u_th;         // tan-ish half field of view
+uniform float u_blend;      // >0: fixed accumulation weight (moving camera); 0: 1/(frame+1)
 out vec4 outColor;
 
 uint rngState;
@@ -100,15 +103,16 @@ void main() {
   rngState = pcg(uint(gl_FragCoord.x) + pcg(uint(gl_FragCoord.y) + pcg(uint(u_frame) * 9781u + 1u)));
   vec2 uv = (gl_FragCoord.xy + vec2(rnd(), rnd())) / u_res * 2.0 - 1.0;
   float aspect = u_res.x / u_res.y;
-  float th = 0.45;
+  float th = u_th;
   vec3 ro = u_camPos;
   vec3 rd = normalize(u_camFwd + u_camRight * (uv.x * th * max(aspect, 1.0)) + u_camUp * (uv.y * th / min(aspect, 1.0)));
 
   float t0 = (1.0 - ro.z) / rd.z;
   vec3 p0 = ro + rd * t0;
   vec3 L = vec3(0.0);
-  if (rd.z < -1e-3 && abs(p0.x) <= 1.0 && abs(p0.y) <= 1.0) {
-    ro = p0;
+  bool enter = u_inside == 1 || (rd.z < -1e-3 && abs(p0.x) <= 1.0 && abs(p0.y) <= 1.0);
+  if (enter) {
+    if (u_inside == 0) ro = p0;
     vec3 thr = vec3(1.0);
     for (int i = 0; i <= 8; i++) {
       if (i > u_bounces) break;
@@ -143,7 +147,7 @@ void main() {
     }
   }
   vec4 prev = texelFetch(u_prev, ivec2(gl_FragCoord.xy), 0);
-  float w = 1.0 / float(u_frame + 1);
+  float w = u_blend > 0.0 ? u_blend : 1.0 / float(u_frame + 1);
   outColor = vec4(mix(prev.rgb, L, w), 1.0);
 }`;
 
@@ -152,9 +156,10 @@ precision highp float;
 uniform sampler2D u_tex;
 uniform vec2 u_res;
 uniform float u_dim;
+uniform vec2 u_off;
 out vec4 outColor;
 vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
 void main() {
-  vec3 c = texture(u_tex, gl_FragCoord.xy / u_res).rgb * u_dim;
+  vec3 c = texture(u_tex, (gl_FragCoord.xy - u_off) / u_res).rgb * u_dim;
   outColor = vec4(pow(aces(c), vec3(1.0 / 2.2)), 1.0);
 }`;

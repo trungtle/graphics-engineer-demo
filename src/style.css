@@ -393,3 +393,51 @@ h2 {
   box-shadow: 0 0 0 1px var(--line);
 }
 #explain small { font-size: 0.9em; opacity: 0.8; }
+
+/* ---- photon mode extras: sub-options and first-person inset ---- */
+#photon-tools {
+  position: absolute;
+  top: var(--s-4);
+  left: var(--s-4);
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+}
+#viewport.photon-mode #photon-tools { display: flex; }
+.pill {
+  min-height: var(--tap);
+  padding: 0 var(--s-4);
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font: 700 var(--fs-small) / 1 inherit;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.pill.on { background: #ffd45e; }
+.pill:active { transform: scale(0.97); }
+
+/* the GL view of the photon is drawn into the canvas under this frame */
+#fp-frame {
+  position: absolute;
+  right: var(--s-4);
+  top: calc(var(--s-4) + var(--tap) + var(--s-3));
+  width: clamp(170px, 26%, 300px);
+  aspect-ratio: 4 / 3;
+  border: 3px solid #fff;
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25), var(--shadow);
+  pointer-events: none;
+}
+#fp-frame[hidden] { display: none; }
+#fp-frame span {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  font: 700 12px / 1 system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}

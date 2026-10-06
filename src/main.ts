@@ -10,7 +10,7 @@ import {
   MATERIALS,
   type MaterialId,
 } from './scene';
-import { cameraOf, ceilingPoint, pick } from './render/cpu';
+import { cameraLookAlong, cameraOf, ceilingPoint, pick, type Camera } from './render/cpu';
 import { initControls, MATERIAL_BLURB } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
@@ -77,8 +77,11 @@ const uTrace = {
   camRight: loc(traceProg, 'u_camRight'),
   camUp: loc(traceProg, 'u_camUp'),
   camFwd: loc(traceProg, 'u_camFwd'),
+  inside: loc(traceProg, 'u_inside'),
+  th: loc(traceProg, 'u_th'),
+  blend: loc(traceProg, 'u_blend'),
 };
-const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res'), dim: loc(dispProg, 'u_dim') };
+const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res'), dim: loc(dispProg, 'u_dim'), off: loc(dispProg, 'u_off') };
 gl.bindVertexArray(gl.createVertexArray());
 
 type Target = { tex: WebGLTexture; fbo: WebGLFramebuffer };
@@ -89,6 +92,17 @@ let rh = 0;
 let frame = 0;
 let scale = Number(params.get('scale') ?? '1');
 const scene = defaultScene();
+
+// First-person "photon's view": a small second render of the box from the photon's position.
+const FP_W = 160;
+const FP_H = 120;
+const FP_TH = 0.8; // wider field of view than the main camera
+const FP_MIN_BLEND = 0.07; // moving camera: keep ~1.5 frames of history
+const FP_PASSES = 10; // samples per frame for the small inset (cheap at 160x120)
+let fpTargets: Target[] = [];
+let fpCur = 0;
+let fpFrames = 0;
+let fpRng = 0;
 
 function makeTarget(w: number, h: number): Target {
   const tex = gl.createTexture()!;
@@ -129,7 +143,7 @@ function resize() {
 
 let pickedText = '';
 // Photon mode dims the render (in the display shader, so it is free) so the photon's glow stands out.
-const PHOTON_DIM = 0.22;
+const PHOTON_DIM = 0.15;
 let dim = 1;
 
 /** Average linear RGB of the accumulated image around a screen position in [-1,1] (y up); null if unreadable. */
@@ -177,6 +191,7 @@ photon = initPhoton({
   toast: ui.toast,
   highlight: eq.highlight,
   readPixel,
+  samplesSoFar: () => frame,
 });
 
 function cycleMaterial(i: number) {
@@ -337,6 +352,74 @@ let last = performance.now();
 let gpuMs = NaN;
 let query: WebGLQuery | null = null;
 
+function tracePass(
+  src: Target,
+  dst: Target,
+  w: number,
+  h: number,
+  frameIdx: number,
+  blend: number,
+  cam: Camera,
+  th: number,
+  inside: boolean,
+) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+  gl.viewport(0, 0, w, h);
+  gl.useProgram(traceProg);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, src.tex);
+  gl.uniform1i(uTrace.prev, 0);
+  gl.uniform2f(uTrace.res, w, h);
+  gl.uniform1i(uTrace.frame, frameIdx);
+  gl.uniform1f(uTrace.blend, blend);
+  gl.uniform1f(uTrace.th, th);
+  gl.uniform1i(uTrace.inside, inside ? 1 : 0);
+  gl.uniform1i(uTrace.bounces, scene.bounces);
+  gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
+  gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
+  gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
+  gl.uniform4f(uTrace.light, scene.light.x, scene.light.z, 0, scene.light.half);
+  gl.uniform3fv(uTrace.lightCol, lightRadiance(scene.light));
+  gl.uniform3fv(uTrace.camPos, cam.pos);
+  gl.uniform3fv(uTrace.camRight, cam.right);
+  gl.uniform3fv(uTrace.camUp, cam.up);
+  gl.uniform3fv(uTrace.camFwd, cam.fwd);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+/** Render and draw the photon's first-person inset into the #fp-frame rectangle (full brightness). */
+function drawPhotonView(pose: { pos: [number, number, number]; fwd: [number, number, number] }, rect: DOMRect) {
+  if (!fpTargets.length) fpTargets = [makeTarget(FP_W, FP_H), makeTarget(FP_W, FP_H)];
+  const cam = cameraLookAlong(pose.pos, pose.fwd);
+  for (let k = 0; k < FP_PASSES; k++) {
+    fpRng++;
+    const blend = Math.max(1 / (fpFrames + 1), FP_MIN_BLEND);
+    fpFrames++;
+    tracePass(fpTargets[fpCur], fpTargets[1 - fpCur], FP_W, FP_H, fpRng, blend, cam, FP_TH, true);
+    fpCur = 1 - fpCur;
+  }
+
+  const cr = canvas.getBoundingClientRect();
+  const sx = canvas.width / cr.width;
+  const sy = canvas.height / cr.height;
+  const x = Math.round((rect.left - cr.left) * sx);
+  const y = Math.round((cr.bottom - rect.bottom) * sy);
+  const w = Math.round(rect.width * sx);
+  const h = Math.round(rect.height * sy);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(x, y, w, h);
+  gl.enable(gl.SCISSOR_TEST);
+  gl.scissor(x, y, w, h);
+  gl.useProgram(dispProg);
+  gl.bindTexture(gl.TEXTURE_2D, fpTargets[fpCur].tex);
+  gl.uniform1i(uDisp.tex, 0);
+  gl.uniform1f(uDisp.dim, 1);
+  gl.uniform2f(uDisp.res, w, h);
+  gl.uniform2f(uDisp.off, x, y);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.disable(gl.SCISSOR_TEST);
+}
+
 function tick(now: number) {
   resize();
   if (query && extTimer) {
@@ -353,28 +436,7 @@ function tick(now: number) {
     gl.beginQuery(extTimer.TIME_ELAPSED_EXT, query);
   }
 
-  const src = targets[cur];
-  const dst = targets[1 - cur];
-  gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
-  gl.viewport(0, 0, rw, rh);
-  gl.useProgram(traceProg);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, src.tex);
-  gl.uniform1i(uTrace.prev, 0);
-  gl.uniform2f(uTrace.res, rw, rh);
-  gl.uniform1i(uTrace.frame, frame);
-  gl.uniform1i(uTrace.bounces, scene.bounces);
-  gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
-  gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
-  gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
-  gl.uniform4f(uTrace.light, scene.light.x, scene.light.z, 0, scene.light.half);
-  gl.uniform3fv(uTrace.lightCol, lightRadiance(scene.light));
-  const cam = cameraOf(scene);
-  gl.uniform3fv(uTrace.camPos, cam.pos);
-  gl.uniform3fv(uTrace.camRight, cam.right);
-  gl.uniform3fv(uTrace.camUp, cam.up);
-  gl.uniform3fv(uTrace.camFwd, cam.fwd);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cameraOf(scene), 0.45, false);
   if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);
   cur = 1 - cur;
   frame++;
@@ -387,7 +449,13 @@ function tick(now: number) {
   dim += ((photon?.enabled ? PHOTON_DIM : 1) - dim) * 0.12;
   gl.uniform1f(uDisp.dim, dim);
   gl.uniform2f(uDisp.res, canvas.width, canvas.height);
+  gl.uniform2f(uDisp.off, 0, 0);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  const pose = photon?.pose(now) ?? null;
+  const fpRect = pose ? photon?.viewRect() : null;
+  if (pose && fpRect && fpRect.width > 0) drawPhotonView(pose, fpRect);
+  else fpFrames = 0;
 
   const dt = now - last;
   last = now;

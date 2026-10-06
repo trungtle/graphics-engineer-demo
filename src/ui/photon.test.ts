@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cameraOf, project, recordPath } from '../render/cpu';
 import { defaultScene, lightRadiance } from '../scene';
-import { classify, pathColor, toDisplay } from './photon';
+import { classify, pathColor, samplePaths, summarize, toDisplay } from './photon';
 
 const ASPECT = 1.25;
 
@@ -63,5 +63,45 @@ describe('toDisplay', () => {
   });
   it('is monotonic', () => {
     expect(toDisplay([0.2, 0.2, 0.2])[0]).toBeLessThan(toDisplay([0.8, 0.8, 0.8])[0]);
+  });
+});
+
+describe('all samples of a pixel', () => {
+  it('returns the requested number of paths, deterministic for a seed', () => {
+    const s = defaultScene();
+    const a = samplePaths(-0.2, -0.3, ASPECT, s, 64, 5);
+    const b = samplePaths(-0.2, -0.3, ASPECT, s, 64, 5);
+    expect(a).toHaveLength(64);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+
+  it('returns nothing outside the box opening', () => {
+    expect(samplePaths(1.6, 0, ASPECT, defaultScene(), 16, 1)).toHaveLength(0);
+  });
+
+  it('summarizes: found count matches classify, average is between black and the lamp', () => {
+    const s = defaultScene();
+    s.bounces = 8;
+    const paths = samplePaths(-0.2, -0.3, ASPECT, s, 400, 11);
+    const { found, avg } = summarize(paths, s);
+    expect(found).toBe(paths.filter((p) => classify(p) === 'light').length);
+    expect(found).toBeGreaterThan(0);
+    const L = lightRadiance(s.light);
+    for (let i = 0; i < 3; i++) {
+      expect(avg[i]).toBeGreaterThan(0);
+      expect(avg[i]).toBeLessThan(L[i]);
+    }
+  });
+
+  it('the average of more samples varies less between runs (Monte Carlo converges)', () => {
+    const s = defaultScene();
+    s.bounces = 8;
+    const spread = (n: number) => {
+      const vals: number[] = [];
+      for (let r = 0; r < 12; r++) vals.push(summarize(samplePaths(-0.2, -0.3, ASPECT, s, n, 100 + r * 977), s).avg[0]);
+      const m = vals.reduce((a, b) => a + b, 0) / vals.length;
+      return Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / vals.length);
+    };
+    expect(spread(512)).toBeLessThan(spread(16));
   });
 });
