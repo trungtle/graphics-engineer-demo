@@ -31,6 +31,8 @@ export interface Controls {
   syncBounces(): void;
   /** Re-read the lamp size/color into the controls. */
   syncLamp(): void;
+  /** Big attract-mode caption in the caption bar (null restores the normal hint). Normal captions are ignored while idle. */
+  idleCaption(text: string | null): void;
 }
 
 export function initControls(opts: {
@@ -119,7 +121,9 @@ export function initControls(opts: {
 
   // Explanations live in a caption bar under the picture (never over the render).
   const explainEl = document.getElementById('explain')!;
+  const isIdle = () => document.body.classList.contains('idle');
   const setHint = () => {
+    if (isIdle()) return;
     explainEl.classList.remove('show');
     explainEl.innerHTML = `<strong>${HINT.title}</strong> <span>${HINT.text}</span>`;
   };
@@ -129,11 +133,20 @@ export function initControls(opts: {
   return {
     syncBounces,
     syncLamp,
+    idleCaption(text) {
+      if (text === null) {
+        setHint();
+        return;
+      }
+      explainEl.classList.add('show');
+      explainEl.innerHTML = `<strong>${text}</strong><small class="idle-tag">Touch to play</small>`;
+    },
     setStats(spp, rays) {
       sppEl.textContent = spp.toLocaleString('en-US');
       raysEl.textContent = formatCount(rays);
     },
     toast(title, text, ms = 2600) {
+      if (isIdle()) return;
       explainEl.innerHTML = `<strong>${title}:</strong> <span>${text}</span>`;
       explainEl.classList.add('show');
       window.clearTimeout(toastTimer);

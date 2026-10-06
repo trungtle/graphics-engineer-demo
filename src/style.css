@@ -441,3 +441,29 @@ h2 {
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
+
+/* ---- attract (idle) mode: big captions in the caption bar, never over the render ---- */
+body.idle #explain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  font-size: calc(var(--fs-small) * 1.7);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--ink);
+  border-left-color: var(--c-li);
+}
+body.idle #explain strong { color: var(--ink); }
+.idle-tag {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--c-li);
+  color: #fff;
+  font-size: var(--fs-small);
+  font-weight: 650;
+  white-space: nowrap;
+  animation: idle-pulse 1.6s ease-in-out infinite;
+}
+@keyframes idle-pulse { 50% { transform: scale(1.07); opacity: 0.85; } }

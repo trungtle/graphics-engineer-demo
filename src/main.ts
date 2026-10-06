@@ -14,6 +14,7 @@ import { cameraLookAlong, cameraOf, ceilingPoint, pick, type Camera } from './re
 import { initControls, MATERIAL_BLURB } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
+import { initIdle } from './idle';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -344,9 +345,22 @@ window.addEventListener('keydown', (e) => {
   const oi = ['q', 'w', 'e'].indexOf(e.key);
   if (oi >= 0) cycleMaterial(oi);
 });
-// Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick };
+// Attract mode: ?idle=<seconds> overrides the 45 s default (0 turns it off).
+const idleParam = params.get('idle');
+const idle = initIdle({
+  scene,
+  reset,
+  ui,
+  eq,
+  photon,
+  totalRays: () => raysTotal,
+  timeoutSeconds: idleParam !== null && !Number.isNaN(Number(idleParam)) ? Number(idleParam) : 45,
+});
 
+// Hook for later UI work and manual testing from the console.
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle };
+
+let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
 let last = performance.now();
 let gpuMs = NaN;
@@ -437,6 +451,7 @@ function tick(now: number) {
   }
 
   tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cameraOf(scene), 0.45, false);
+  raysTotal += rw * rh * (scene.bounces + 1);
   if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);
   cur = 1 - cur;
   frame++;

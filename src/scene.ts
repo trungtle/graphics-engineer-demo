@@ -67,3 +67,12 @@ export function defaultScene(): SceneState {
     camera: { yaw: 0, pitch: 0 },
   };
 }
+
+/** Put an existing scene object back to the defaults, in place (other modules hold a reference to it). */
+export function resetScene(s: SceneState): void {
+  const d = defaultScene();
+  s.bounces = d.bounces;
+  d.objects.forEach((o, i) => Object.assign(s.objects[i], o));
+  Object.assign(s.light, d.light);
+  Object.assign(s.camera, d.camera);
+}
