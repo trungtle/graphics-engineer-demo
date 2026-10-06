@@ -78,7 +78,7 @@ const uTrace = {
   camUp: loc(traceProg, 'u_camUp'),
   camFwd: loc(traceProg, 'u_camFwd'),
 };
-const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res') };
+const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res'), dim: loc(dispProg, 'u_dim') };
 gl.bindVertexArray(gl.createVertexArray());
 
 type Target = { tex: WebGLTexture; fbo: WebGLFramebuffer };
@@ -128,6 +128,41 @@ function resize() {
 }
 
 let pickedText = '';
+// Photon mode dims the render (in the display shader, so it is free) so the photon's glow stands out.
+const PHOTON_DIM = 0.22;
+let dim = 1;
+
+/** Average linear RGB of the accumulated image around a screen position in [-1,1] (y up); null if unreadable. */
+function readPixel(nx: number, ny: number): [number, number, number] | null {
+  if (frame < 1) return null; // nothing accumulated yet (just restarted)
+  try {
+    const t = targets[cur];
+    const x = Math.round(((nx + 1) / 2) * (rw - 1));
+    const y = Math.round(((ny + 1) / 2) * (rh - 1));
+    const x0 = Math.max(0, x - 1);
+    const y0 = Math.max(0, y - 1);
+    const w = Math.min(3, rw - x0);
+    const h = Math.min(3, rh - y0);
+    const buf = new Float32Array(w * h * 4);
+    gl.getError();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo);
+    gl.readPixels(x0, y0, w, h, gl.RGBA, gl.FLOAT, buf);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    if (gl.getError() !== gl.NO_ERROR) return null;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    for (let i = 0; i < w * h; i++) {
+      r += buf[i * 4];
+      g += buf[i * 4 + 1];
+      b += buf[i * 4 + 2];
+    }
+    return [r / (w * h), g / (w * h), b / (w * h)];
+  } catch {
+    return null;
+  }
+}
+
 let photon: ReturnType<typeof initPhoton> | undefined;
 const reset = () => {
   frame = 0;
@@ -141,6 +176,7 @@ photon = initPhoton({
   scene,
   toast: ui.toast,
   highlight: eq.highlight,
+  readPixel,
 });
 
 function cycleMaterial(i: number) {
@@ -348,6 +384,8 @@ function tick(now: number) {
   gl.useProgram(dispProg);
   gl.bindTexture(gl.TEXTURE_2D, targets[cur].tex);
   gl.uniform1i(uDisp.tex, 0);
+  dim += ((photon?.enabled ? PHOTON_DIM : 1) - dim) * 0.12;
+  gl.uniform1f(uDisp.dim, dim);
   gl.uniform2f(uDisp.res, canvas.width, canvas.height);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 

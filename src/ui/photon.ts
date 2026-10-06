@@ -1,11 +1,12 @@
-import { cameraOf, project, recordPath, type PathSegment } from '../render/cpu';
-import type { SceneState } from '../scene';
-import type { Term } from './equation';
+import { cameraOf, project, recordPath, type PathSegment, type Vec3 } from '../render/cpu';
+import { lightRadiance, type SceneState } from '../scene';
 
-const SEG_MS = 600;
-const HOLD_MS = 8000;
+// Timing (ms): each segment is a travel phase then a short dwell where the hit glows.
+const TRAVEL_MS = 750;
+const DWELL_MS = 300;
+const SEG_MS = TRAVEL_MS + DWELL_MS;
+const HOLD_MS = 12000;
 const FADE_MS = 1000;
-const SLANT = 0.45; // below this cos, call the hit "a slant"
 
 export interface Photon {
   readonly enabled: boolean;
@@ -16,62 +17,51 @@ export interface Photon {
   clear(): void;
 }
 
-const SURFACE_NAME: Record<string, string> = {
-  left: 'the red wall',
-  right: 'the green wall',
-  floor: 'the floor',
-  ceiling: 'the ceiling',
-  back: 'the back wall',
-  light: 'the lamp',
-  object: 'the ball',
-};
+export type Outcome = 'light' | 'object' | 'miss';
 
-/** What happened at the end of a segment, and which equation term explains it. */
-export function describe(
-  seg: PathSegment,
-  index: number,
-  tally: { sent: number; found: number } = { sent: 1, found: 0 },
-): { title: string; text: string; term: Term; done: boolean } {
-  const where = SURFACE_NAME[seg.surface] ?? 'a surface';
-  const tint = seg.surface === 'left' ? ', picking up red' : seg.surface === 'right' ? ', picking up green' : '';
-  const n = index + 1;
-  const title = `Bounce ${n}`;
-  const score = `${tally.found} of ${tally.sent} photons found the lamp so far.`;
-  const lost = `Most photons never find the lamp, which is why the picture starts noisy. ${score} Tap again!`;
-  switch (seg.event) {
-    case 'light':
-      return { title: 'Found the lamp!', text: `This path carries light to your eye. ${score} Tap again!`, term: 'le', done: true };
-    case 'escaped':
-      return { title: 'Lost', text: `It left the box without finding light. ${lost}`, term: 'int', done: true };
-    case 'cutoff':
-      return { title: 'Out of bounces', text: `This path found no light. ${lost}`, term: 'int', done: true };
-    case 'mirror':
-      return { title, text: `Hit ${where}: a mirror bounces light perfectly`, term: index === 0 ? 'lo' : 'fr', done: false };
-    case 'metal':
-      return { title, text: `Hit ${where}: metal gives a slightly blurry bounce`, term: index === 0 ? 'lo' : 'fr', done: false };
-    case 'reflect':
-      return { title, text: `Hit glass: this time the light reflects`, term: index === 0 ? 'lo' : 'fr', done: false };
-    case 'refract':
-      return { title, text: `Hit glass: this time the light bends through`, term: index === 0 ? 'lo' : 'fr', done: false };
-    default:
-      if (seg.cos < SLANT) {
-        return { title, text: `Hit ${where} at a slant, so it gets less light`, term: 'cos', done: false };
-      }
-      return {
-        title,
-        text: `Hit ${where}: matte scatters light in a random direction${tint}`,
-        term: index === 0 ? 'lo' : 'fr',
-        done: false,
-      };
-  }
+/** How a path ended: found the lamp, ended on a surface without finding light, or left the box. */
+export function classify(path: PathSegment[]): Outcome {
+  const last = path[path.length - 1];
+  if (last.event === 'light') return 'light';
+  if (last.event === 'escaped') return 'miss';
+  return 'object';
 }
+
+/** Linear RGB this photon brings back to the pixel: lamp radiance times every surface color on the way. */
+export function pathColor(path: PathSegment[], scene: SceneState): Vec3 {
+  if (classify(path) !== 'light') return [0, 0, 0];
+  const L = lightRadiance(scene.light);
+  let r = L[0];
+  let g = L[1];
+  let b = L[2];
+  for (const seg of path) {
+    if (seg.event === 'light') break;
+    r *= seg.albedo[0];
+    g *= seg.albedo[1];
+    b *= seg.albedo[2];
+  }
+  return [r, g, b];
+}
+
+const aces = (x: number) => Math.min(1, Math.max(0, (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14)));
+/** Linear radiance to the 0-255 value the display shader would show. */
+export function toDisplay(c: Vec3): [number, number, number] {
+  return c.map((v) => Math.round(255 * Math.pow(aces(v), 1 / 2.2))) as [number, number, number];
+}
+
+const swatch = (c: [number, number, number]) =>
+  `<i class="sw" style="background:rgb(${c[0]},${c[1]},${c[2]})"></i> (${c[0]}, ${c[1]}, ${c[2]})`;
+
+const TITLE: Record<Outcome, string> = { light: 'Hit light', object: 'Hit object', miss: 'Miss' };
 
 export function initPhoton(opts: {
   stage: HTMLElement;
   view: HTMLCanvasElement;
   scene: SceneState;
   toast: (title: string, text: string, ms?: number) => void;
-  highlight: (t: Term, ms?: number) => void;
+  highlight: (t: 'le' | 'int') => void;
+  /** Linear RGB of the accumulated image around a screen position in [-1,1] (null if unavailable). */
+  readPixel: (ndcX: number, ndcY: number) => Vec3 | null;
 }): Photon {
   const { stage, view, scene } = opts;
 
@@ -89,14 +79,16 @@ export function initPhoton(opts: {
 
   let on = false;
   let segs: PathSegment[] = [];
+  let tints: Vec3[] = [];
+  let tapNdc: [number, number] = [0, 0];
   let start = 0;
-  let announced = 0;
+  let resultShown = false;
   let raf = 0;
   const tally = { sent: 0, found: 0 };
 
   const aspect = () => view.clientWidth / view.clientHeight;
 
-  function toPx(p: [number, number, number]): [number, number] {
+  function toPx(p: Vec3): [number, number] {
     const [nx, ny] = project(p, aspect(), cameraOf(scene));
     return [((nx + 1) / 2) * view.clientWidth, ((1 - ny) / 2) * view.clientHeight];
   }
@@ -112,72 +104,115 @@ export function initPhoton(opts: {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  /** Photon glow color: the lamp's hue, tinted by each surface it bounced off. */
+  function buildTints(path: PathSegment[]): Vec3[] {
+    const L = lightRadiance(scene.light);
+    const m = Math.max(L[0], L[1], L[2]);
+    let c: Vec3 = [L[0] / m, L[1] / m, L[2] / m];
+    const out: Vec3[] = [c];
+    for (const seg of path) {
+      if (seg.event !== 'light' && seg.event !== 'escaped') {
+        const n: Vec3 = [c[0] * seg.albedo[0], c[1] * seg.albedo[1], c[2] * seg.albedo[2]];
+        const mx = Math.max(n[0], n[1], n[2], 1e-3);
+        c = [n[0] / mx, n[1] / mx, n[2] / mx];
+      }
+      out.push(c);
+    }
+    return out;
+  }
+
+  const rgba = (c: Vec3, a: number, lift = 0.35) =>
+    `rgba(${Math.round(255 * (c[0] * (1 - lift) + lift))},${Math.round(255 * (c[1] * (1 - lift) + lift))},${Math.round(
+      255 * (c[2] * (1 - lift) + lift),
+    )},${a})`;
+
+  function glow(x: number, y: number, radius: number, c: Vec3, a: number) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    g.addColorStop(0, rgba(c, a, 0.6));
+    g.addColorStop(0.4, rgba(c, a * 0.45, 0.2));
+    g.addColorStop(1, rgba(c, 0, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function showResult() {
+    resultShown = true;
+    const outcome = classify(segs);
+    if (outcome === 'light') tally.found++;
+    const mine = toDisplay(pathColor(segs, scene));
+    const px = opts.readPixel(tapNdc[0], tapNdc[1]);
+    const pixelText = px ? ` &nbsp; Pixel in the picture: ${swatch(toDisplay(px))}` : '';
+    opts.toast(
+      TITLE[outcome],
+      `This photon brings back ${swatch(mine)}.${pixelText} &nbsp; <small>(${tally.found} of ${tally.sent} photons found the lamp)</small>`,
+      HOLD_MS,
+    );
+    opts.highlight(outcome === 'light' ? 'le' : 'int');
+  }
+
+  const ease = (p: number) => 0.5 - 0.5 * Math.cos(Math.PI * p);
+
   function frame(now: number) {
     fit();
     ctx.clearRect(0, 0, view.clientWidth, view.clientHeight);
     const t = now - start;
     const total = segs.length * SEG_MS;
+    if (!resultShown && t >= total) showResult();
     const fade = t > total + HOLD_MS ? Math.max(0, 1 - (t - total - HOLD_MS) / FADE_MS) : 1;
     if (fade <= 0) {
       stop();
       return;
     }
 
-    // announce each segment as the photon arrives at its end
-    const arrived = Math.min(segs.length, Math.floor(t / SEG_MS));
-    while (announced < arrived) {
-      const d = describe(segs[announced], announced, tally);
-      opts.toast(d.title, d.text, d.done ? 6000 : SEG_MS + 400);
-      opts.highlight(d.term, d.done ? 3000 : SEG_MS + 300);
-      announced++;
-    }
-
     ctx.globalAlpha = fade;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'lighter';
     let head: [number, number] | null = null;
+    let headTint: Vec3 = tints[0];
     segs.forEach((seg, i) => {
-      const p = Math.min(1, Math.max(0, (t - i * SEG_MS) / SEG_MS));
-      if (p <= 0) return;
-      const e = 1 - Math.pow(1 - p, 3);
+      const local = t - i * SEG_MS;
+      if (local <= 0) return;
+      const p = Math.min(1, local / TRAVEL_MS);
+      const e = ease(p);
       const [ax, ay] = toPx(seg.from);
       const [bx, by] = toPx(seg.to);
       const hx = ax + (bx - ax) * e;
       const hy = ay + (by - ay) * e;
-      ctx.shadowColor = '#ffb81c';
-      ctx.shadowBlur = 16;
-      ctx.strokeStyle = '#ffe08a';
-      ctx.lineWidth = 5;
+      const c = tints[i];
+      // soft wide trail + bright core
+      ctx.strokeStyle = rgba(c, 0.22);
+      ctx.lineWidth = 12;
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.lineTo(hx, hy);
       ctx.stroke();
-      ctx.shadowBlur = 0;
+      ctx.strokeStyle = rgba(c, 0.95, 0.5);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(hx, hy);
+      ctx.stroke();
       if (p >= 1 && seg.surface !== 'none') {
-        ctx.fillStyle = '#fff';
-        ctx.strokeStyle = '#ffb81c';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(bx, by, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#16202e';
-        ctx.font = '700 13px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(seg.event === 'light' ? '★' : String(i + 1), bx, by + 0.5);
+        // the hit lights up the surface: a glow that swells during the dwell and then settles
+        const d = Math.min(1, (local - TRAVEL_MS) / DWELL_MS);
+        const burst = Math.sin(Math.PI * d);
+        const big = seg.event === 'light' ? 1.5 : 1;
+        glow(bx, by, (46 + 40 * burst) * big, tints[i + 1], 0.45 + 0.35 * burst);
       }
       head = [hx, hy];
+      headTint = c;
     });
-    if (head && t < total) {
-      ctx.shadowColor = '#ffb81c';
-      ctx.shadowBlur = 24;
-      ctx.fillStyle = '#fff';
+    if (head && t < total - DWELL_MS) {
+      glow(head[0], head[1], 70, headTint, 0.9);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
       ctx.beginPath();
-      ctx.arc(head[0], head[1], 9, 0, Math.PI * 2);
+      ctx.arc(head[0], head[1], 6, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.shadowBlur = 0;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     raf = requestAnimationFrame(frame);
   }
@@ -202,7 +237,7 @@ export function initPhoton(opts: {
     btn.textContent = v ? 'Photon mode: tap the picture' : 'Be a photon';
     stage.classList.toggle('photon-mode', v);
     clear();
-    if (v) opts.toast('Photon mode', 'Tap anywhere to send a photon into the scene', 3500);
+    if (v) opts.toast('Photon mode', 'Tap anywhere to send a photon into the scene', 4000);
   }
 
   btn.addEventListener('click', () => setEnabled(!on));
@@ -221,10 +256,12 @@ export function initPhoton(opts: {
         return;
       }
       segs = path;
+      tints = buildTints(path);
+      tapNdc = [ndcX, ndcY];
       tally.sent++;
-      if (path[path.length - 1].event === 'light') tally.found++;
+      resultShown = false;
       start = performance.now();
-      announced = 0;
+      opts.toast('Photon on its way', '', segs.length * SEG_MS + 400);
       raf = requestAnimationFrame(frame);
     },
   };

@@ -151,9 +151,10 @@ export const DISPLAY_FRAG = `#version 300 es
 precision highp float;
 uniform sampler2D u_tex;
 uniform vec2 u_res;
+uniform float u_dim;
 out vec4 outColor;
 vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
 void main() {
-  vec3 c = texture(u_tex, gl_FragCoord.xy / u_res).rgb;
+  vec3 c = texture(u_tex, gl_FragCoord.xy / u_res).rgb * u_dim;
   outColor = vec4(pow(aces(c), vec3(1.0 / 2.2)), 1.0);
 }`;

@@ -381,3 +381,15 @@ h2 {
   #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
   #app { gap: var(--s-3); }
 }
+
+/* color chips in the result caption */
+.sw {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin: 0 0.15em -0.15em 0;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+#explain small { font-size: 0.9em; opacity: 0.8; }
