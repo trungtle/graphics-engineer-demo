@@ -18,6 +18,8 @@ it, the panel lights up that term (see [ui.md](ui.md), UI-003).
 
 ## Decisions
 
+- **Photon mode presentation** (2026-10-06, user feedback): the render is dimmed (display-shader exposure 0.22, eased in/out, so it costs nothing) so the photon reads as a glowing light; the photon and trail are additive glows tinted by the lamp color and the surfaces hit, and each hit lights up its spot. Pace is 0.75 s travel + 0.3 s dwell per segment (constants at the top of `src/ui/photon.ts`). No per-bounce text: the caption bar shows only 'Photon on its way' during flight and, at the end, 'Hit light' / 'Hit object' / 'Miss', the color this photon brings back and the pixel's color in the picture (3x3 average read from the float accumulation buffer, not the dimmed canvas), plus the found-the-lamp tally. 'Hit object' also covers running out of bounces on a surface.
+
 - **Lamp power is constant as it resizes** (2026-10-06): radiance scales with (0.3/half)^2, so a bigger lamp gives softer shadows without getting brighter. Size range 0.12-0.42 half-width; lamp always clamped fully on the ceiling.
 - **Camera is an orbit camera** (2026-10-06): yaw within +-0.5 rad, pitch -0.2..0.3, distance fixed. Shader gets camPos/right/up/fwd uniforms; cpu.ts `makeCamera` mirrors it. Orbit drag works on anything that is not the lamp; double-tap on the background resets (not in photon mode).
 
@@ -103,7 +105,7 @@ a time (~600 ms per segment), each bounce labelled with what happened
 ("hit red wall → picks up red", "reached the lamp!"). Paths that escape or
 die are shown too. Tap again for a new random path from the same pixel.
 
-Result: `src/ui/photon.ts` (overlay canvas, 600 ms per segment, numbered hit dots, caption per bounce, equation term lit per step: first hit L_o, later hits f_r, slanted hit cos θ, lamp L_e, lost/out-of-bounces the integral) + `cos` field on PathSegment. Toggle button top-right of the picture; in photon mode taps do not change materials; any scene change clears the path and the tally. Screenshot: [img/int-004-photon-path.jpg](img/int-004-photon-path.jpg). Overlay is drawn in CSS pixels from the 3D hit points every frame, so it stays aligned at any render scale or window size.
+Result: `src/ui/photon.ts` (overlay canvas, glowing animated path; superseded per-bounce captions and per-step equation highlights by the end-of-path result, see Decisions; the equation lights L_e for a hit on the lamp and the integral otherwise) + `cos` and `albedo` fields on PathSegment. 19 tests in total. Toggle button top-right of the picture; in photon mode taps do not change materials; any scene change clears the path and the tally. Screenshot: [img/int-004-photon-path.jpg](img/int-004-photon-path.jpg). Overlay is drawn in CSS pixels from the 3D hit points every frame, so it stays aligned at any render scale or window size.
 
 **Finding (corrects the original criterion):** only ~5-7% of random paths reach the lamp (measured over 2000 seeds at several pixels, 2-8 bounces), not 'the common case'. Kept honest (no fake light shortcut): failed paths explain that most photons never find the lamp, which is why the picture starts noisy, and a running tally ('N of M photons found the lamp') is shown. A test asserts the 2-30% band.
 

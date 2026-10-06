@@ -71,3 +71,10 @@ Review it with: `git show 1f297d4`
 
 **CL: `bb4b091`**: scene.ts (camera, light helpers, colors), cpu.ts (Camera, makeCamera, rayDir, ceilingPoint; all picking/projection now takes the camera), shader camera + light-radiance uniforms, main.ts pointer state machine (lamp drag / orbit / tap / double-tap), lamp swatches + size slider, compact layout media queries, 13 tests.
 Review it with: `git show bb4b091`
+
+## Photon mode rework (INT-004 follow-up)
+
+**Status 2026-10-06: COMPLETE (user feedback applied).**
+
+**CL: `713d1e8`**: dimming uniform in DISPLAY_FRAG, glow rendering in photon.ts, classify/pathColor/toDisplay + tests, readPixel from the float accumulation target (guarded when nothing accumulated), slower pacing, result-only caption.
+Review it with: `git show 713d1e8`
