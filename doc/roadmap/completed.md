@@ -92,3 +92,10 @@ Review it with: `git show 694c5c5`
 
 **CL: `9cec387`**: `src/idle.ts`, `resetScene` in scene.ts (+test, 24 tests total), `idleCaption` and toast suppression in controls.ts, rays-since-load counter and `?idle=` wiring in main.ts, big-caption styles.
 Review it with: `git show 9cec387`
+
+## Careers strip (UI-005); UI-006 dropped
+
+**Status 2026-10-06: COMPLETE.**
+
+**CL: `ce8ed8b`**: `src/ui/careers.ts`, strip styles, idle captions; UI-006 (presenter panel) removed from the roadmap at the user's request.
+Review it with: `git show ce8ed8b`
