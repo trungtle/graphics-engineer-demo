@@ -18,6 +18,10 @@ uniform vec4 u_objCol[3];   // rgb color
 uniform int u_objMat[3];
 uniform vec4 u_light;       // x, z center, w half-size (y fixed at ceiling)
 uniform vec3 u_lightCol;    // emitted radiance
+uniform vec3 u_camPos;
+uniform vec3 u_camRight;
+uniform vec3 u_camUp;
+uniform vec3 u_camFwd;
 out vec4 outColor;
 
 uint rngState;
@@ -97,13 +101,13 @@ void main() {
   vec2 uv = (gl_FragCoord.xy + vec2(rnd(), rnd())) / u_res * 2.0 - 1.0;
   float aspect = u_res.x / u_res.y;
   float th = 0.45;
-  vec3 ro = vec3(0.0, 0.0, 3.4);
-  vec3 rd = normalize(vec3(uv.x * th * max(aspect, 1.0), uv.y * th / min(aspect, 1.0), -1.0));
+  vec3 ro = u_camPos;
+  vec3 rd = normalize(u_camFwd + u_camRight * (uv.x * th * max(aspect, 1.0)) + u_camUp * (uv.y * th / min(aspect, 1.0)));
 
   float t0 = (1.0 - ro.z) / rd.z;
   vec3 p0 = ro + rd * t0;
   vec3 L = vec3(0.0);
-  if (abs(p0.x) <= 1.0 && abs(p0.y) <= 1.0) {
+  if (rd.z < -1e-3 && abs(p0.x) <= 1.0 && abs(p0.y) <= 1.0) {
     ro = p0;
     vec3 thr = vec3(1.0);
     for (int i = 0; i <= 8; i++) {

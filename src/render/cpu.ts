@@ -5,7 +5,7 @@ import type { SceneState } from '../scene';
 
 export type Vec3 = [number, number, number];
 
-export const CAMERA_ORIGIN: Vec3 = [0, 0, 3.4];
+export const CAMERA_DIST = 3.4;
 export const CAMERA_TH = 0.45;
 const GLASS_IOR = 1.5;
 const METAL_ROUGH = 0.18;
@@ -43,20 +43,62 @@ export interface CpuHit {
   emissive: boolean;
 }
 
-/** Pixel position in [-1,1] (x right, y up) to a primary ray starting on the open front plane z=1. */
-export function cameraRay(ndcX: number, ndcY: number, aspect: number): { ro: Vec3; rd: Vec3 } | null {
-  const rd = norm([ndcX * CAMERA_TH * Math.max(aspect, 1), (ndcY * CAMERA_TH) / Math.min(aspect, 1), -1]);
-  const t0 = (1 - CAMERA_ORIGIN[2]) / rd[2];
-  const p0 = add(CAMERA_ORIGIN, mul(rd, t0));
+export interface Camera {
+  pos: Vec3;
+  right: Vec3;
+  up: Vec3;
+  fwd: Vec3;
+}
+
+/** Orbit camera around the box center. yaw/pitch = 0 is straight on from +z. Mirrors main.ts uniforms. */
+export function makeCamera(yaw = 0, pitch = 0): Camera {
+  const cp = Math.cos(pitch);
+  const pos: Vec3 = [
+    CAMERA_DIST * Math.sin(yaw) * cp,
+    CAMERA_DIST * Math.sin(pitch),
+    CAMERA_DIST * Math.cos(yaw) * cp,
+  ];
+  const fwd = norm(mul(pos, -1));
+  const right = norm(cross(fwd, [0, 1, 0]));
+  const up = cross(right, fwd);
+  return { pos, right, up, fwd };
+}
+
+export const cameraOf = (scene: SceneState): Camera => makeCamera(scene.camera.yaw, scene.camera.pitch);
+
+/** Direction of the view ray through a screen position in [-1,1] (x right, y up). */
+export function rayDir(ndcX: number, ndcY: number, aspect: number, cam: Camera): Vec3 {
+  const sx = ndcX * CAMERA_TH * Math.max(aspect, 1);
+  const sy = (ndcY * CAMERA_TH) / Math.min(aspect, 1);
+  return norm(add(add(cam.fwd, mul(cam.right, sx)), mul(cam.up, sy)));
+}
+
+/** Primary ray, advanced to the open front plane z=1 (null if it misses the opening). */
+export function cameraRay(ndcX: number, ndcY: number, aspect: number, cam: Camera): { ro: Vec3; rd: Vec3 } | null {
+  const rd = rayDir(ndcX, ndcY, aspect, cam);
+  if (rd[2] > -1e-3) return null;
+  const t0 = (1 - cam.pos[2]) / rd[2];
+  const p0 = add(cam.pos, mul(rd, t0));
   if (Math.abs(p0[0]) > 1 || Math.abs(p0[1]) > 1) return null;
   return { ro: p0, rd };
 }
 
-/** Inverse of cameraRay's direction mapping: world point to [-1,1] screen coordinates. */
-export function project(p: Vec3, aspect: number): [number, number] {
-  const d = sub(p, CAMERA_ORIGIN);
-  const k = 1 / -d[2];
-  return [(d[0] * k) / (CAMERA_TH * Math.max(aspect, 1)), (d[1] * k * Math.min(aspect, 1)) / CAMERA_TH];
+/** Inverse of rayDir: world point to [-1,1] screen coordinates. */
+export function project(p: Vec3, aspect: number, cam: Camera): [number, number] {
+  const d = sub(p, cam.pos);
+  const z = dot(d, cam.fwd);
+  return [
+    dot(d, cam.right) / z / (CAMERA_TH * Math.max(aspect, 1)),
+    (dot(d, cam.up) / z) * Math.min(aspect, 1) / CAMERA_TH,
+  ];
+}
+
+/** Where a view ray lands on the ceiling plane y=1, as [x, z] (null if it does not point up). */
+export function ceilingPoint(ndcX: number, ndcY: number, aspect: number, cam: Camera): [number, number] | null {
+  const rd = rayDir(ndcX, ndcY, aspect, cam);
+  if (rd[1] < 1e-4) return null;
+  const t = (1 - cam.pos[1]) / rd[1];
+  return [cam.pos[0] + rd[0] * t, cam.pos[2] + rd[2] * t];
 }
 
 export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null {
@@ -122,7 +164,7 @@ export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null 
 
 /** What is under this screen position? Returns null if the ray leaves the box (background). */
 export function pick(ndcX: number, ndcY: number, aspect: number, scene: SceneState): CpuHit | null {
-  const ray = cameraRay(ndcX, ndcY, aspect);
+  const ray = cameraRay(ndcX, ndcY, aspect, cameraOf(scene));
   return ray ? intersect(ray.ro, ray.rd, scene) : null;
 }
 
@@ -171,7 +213,7 @@ export interface PathSegment {
 
 /** Trace one random light path (camera -> light direction) from a screen position. */
 export function recordPath(ndcX: number, ndcY: number, aspect: number, scene: SceneState, seed: number): PathSegment[] {
-  const ray = cameraRay(ndcX, ndcY, aspect);
+  const ray = cameraRay(ndcX, ndcY, aspect, cameraOf(scene));
   if (!ray) return [];
   const rnd = mulberry32(seed);
   const segs: PathSegment[] = [];

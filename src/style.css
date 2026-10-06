@@ -72,7 +72,7 @@ html, body {
 @media (orientation: portrait) {
   #app {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 54fr) minmax(0, 46fr) auto;
+    grid-template-rows: minmax(0, 52fr) minmax(0, 48fr) auto;
     grid-template-areas:
       'stage'
       'panel'
@@ -204,7 +204,7 @@ h2 {
 }
 
 /* ---- controls ---- */
-#controls { display: flex; flex-direction: column; gap: var(--s-4); }
+#controls { display: flex; flex-direction: column; gap: var(--s-3); }
 
 .ctl-row { display: flex; align-items: center; gap: var(--s-4); }
 .stat { display: flex; flex-direction: column; min-width: 0; }
@@ -243,23 +243,23 @@ h2 {
 .slider::-webkit-slider-runnable-track {
   height: 12px;
   border-radius: 6px;
-  background: linear-gradient(to right, var(--c-li) var(--fill), var(--line) var(--fill));
+  background: linear-gradient(to right, var(--acc, var(--c-li)) var(--fill), var(--line) var(--fill));
 }
 .slider::-moz-range-track { height: 12px; border-radius: 6px; background: var(--line); }
-.slider::-moz-range-progress { height: 12px; border-radius: 6px; background: var(--c-li); }
+.slider::-moz-range-progress { height: 12px; border-radius: 6px; background: var(--acc, var(--c-li)); }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 40px;
+  width: 36px;
   height: 40px;
   margin-top: -14px;
   border-radius: 50%;
   background: #fff;
-  border: 4px solid var(--c-li);
+  border: 4px solid var(--acc, var(--c-li));
   box-shadow: var(--shadow);
 }
-.slider::-moz-range-thumb { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 4px solid var(--c-li); }
+.slider::-moz-range-thumb { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 4px solid var(--acc, var(--c-li)); }
 .ticks { display: flex; justify-content: space-between; padding: 0 14px; color: var(--muted); font-size: var(--fs-small); margin-top: calc(var(--s-1) * -1); }
-.cap { margin: var(--s-2) 0 0; color: var(--muted); font-size: var(--fs-small); min-height: 2.8em; }
+.cap { margin: 0; color: var(--muted); font-size: var(--fs-small); min-height: 1.4em; }
 
 
 /* iPad portrait: title and equation share a row so the controls get the height */
@@ -338,3 +338,46 @@ h2 {
 #photon-btn.on { background: #ffd45e; box-shadow: 0 0 0 4px rgba(255, 212, 94, 0.45), var(--shadow); }
 #photon-btn:active { transform: scale(0.97); }
 #viewport.photon-mode #view { cursor: crosshair; }
+
+/* ---- lamp controls ---- */
+.lamp-row { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.swatches { display: flex; gap: 2px; }
+.swatch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+.swatch::before {
+  content: '';
+  position: absolute;
+  inset: 9px 3px;
+  border-radius: 50%;
+  background: var(--sw);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.swatch.on::before { box-shadow: 0 0 0 3px var(--c-le); }
+.lamp-row .slider { flex: 1 1 90px; min-width: 90px; width: auto; }
+.ctl-hint { color: var(--muted); font-size: var(--fs-small); }
+.slider.le { --acc: var(--c-le); }
+
+/* short landscape screens (e.g. iPad 1024x768): tighten vertical rhythm */
+@media (orientation: landscape) and (max-height: 860px) {
+  #app { gap: var(--s-3); padding-top: calc(var(--s-3) + var(--safe-t)); padding-bottom: calc(var(--s-3) + var(--safe-b)); }
+  #panel { gap: var(--s-3); }
+  #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
+  #brand p { display: none; }
+  .eq-cap { margin-top: var(--s-2); }
+}
+
+@media (orientation: portrait) and (max-height: 1100px) {
+  #panel { gap: var(--s-3); }
+  #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
+  #app { gap: var(--s-3); }
+}

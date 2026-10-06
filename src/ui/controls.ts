@@ -1,4 +1,4 @@
-import type { MaterialId, SceneState } from '../scene';
+import { clampLight, LIGHT_COLORS, LIGHT_MAX_HALF, LIGHT_MIN_HALF, type MaterialId, type SceneState } from '../scene';
 import type { Term } from './equation';
 
 export const MATERIAL_BLURB: Record<MaterialId, { name: string; text: string }> = {
@@ -10,11 +10,7 @@ export const MATERIAL_BLURB: Record<MaterialId, { name: string; text: string }> 
 };
 
 const BOUNCE_CAPTION = (n: number): string =>
-  n === 0
-    ? 'Only the lamp: no light has bounced yet'
-    : n === 1
-      ? 'Direct light: straight from the lamp to the surface'
-      : 'Light bounces around: the walls tint each other';
+  n === 0 ? 'Only the lamp: no bounces yet' : n === 1 ? 'Direct light only' : 'Light bounces: walls tint each other';
 
 const HINT = {
   title: 'Try it',
@@ -33,6 +29,8 @@ export interface Controls {
   toast(title: string, text: string, ms?: number): void;
   /** Re-read scene.bounces into the slider (after a change made elsewhere, e.g. the keyboard). */
   syncBounces(): void;
+  /** Re-read the lamp size/color into the controls. */
+  syncLamp(): void;
 }
 
 export function initControls(opts: {
@@ -50,8 +48,16 @@ export function initControls(opts: {
     <div class="ctl-block">
       <div class="ctl-head"><span class="ctl-title t-li">Light bounces</span><span class="ctl-val t-li" id="bval"></span></div>
       <input id="bounces" class="slider" type="range" min="0" max="8" step="1" aria-label="Light bounces" />
-      <div class="ticks" aria-hidden="true">${[0, 1, 2, 3, 4, 5, 6, 7, 8].map((n) => `<span>${n}</span>`).join('')}</div>
       <p class="cap" id="bcap"></p>
+    </div>
+    <div class="ctl-block lamp">
+      <div class="ctl-head"><span class="ctl-title t-le">Lamp</span><span class="ctl-hint" id="lcap"></span></div>
+      <div class="lamp-row">
+        <div class="swatches" role="radiogroup" aria-label="Lamp color">
+          ${LIGHT_COLORS.map((c, i) => `<button class="swatch" type="button" role="radio" data-i="${i}" aria-label="${c.name}" style="--sw:${c.swatch}"></button>`).join('')}
+        </div>
+        <input id="lampsize" class="slider le" type="range" min="${Math.round(LIGHT_MIN_HALF * 100)}" max="${Math.round(LIGHT_MAX_HALF * 100)}" step="1" aria-label="Lamp size" />
+      </div>
     </div>`;
 
   const slider = root.querySelector<HTMLInputElement>('#bounces')!;
@@ -78,6 +84,39 @@ export function initControls(opts: {
   });
   syncBounces();
 
+  const lsize = root.querySelector<HTMLInputElement>('#lampsize')!;
+  const lcap = root.querySelector<HTMLElement>('#lcap')!;
+  const swatches = Array.from(root.querySelectorAll<HTMLButtonElement>('.swatch'));
+  const syncLamp = () => {
+    const l = opts.scene.light;
+    lsize.value = String(Math.round(l.half * 100));
+    const frac = (l.half - LIGHT_MIN_HALF) / (LIGHT_MAX_HALF - LIGHT_MIN_HALF);
+    lsize.style.setProperty('--fill', `${frac * 100}%`);
+    lcap.textContent = frac < 0.25 ? 'Small: sharp shadows' : frac > 0.7 ? 'Big: soft shadows' : 'Drag it in the picture';
+    swatches.forEach((b, i) => {
+      const c = LIGHT_COLORS[i].rgb;
+      const on = c[0] === l.color[0] && c[1] === l.color[1] && c[2] === l.color[2];
+      b.setAttribute('aria-checked', String(on));
+      b.classList.toggle('on', on);
+    });
+  };
+  lsize.addEventListener('input', () => {
+    opts.scene.light.half = Number(lsize.value) / 100;
+    clampLight(opts.scene.light);
+    syncLamp();
+    opts.reset();
+    opts.onTerm?.('le');
+  });
+  swatches.forEach((b, i) =>
+    b.addEventListener('click', () => {
+      opts.scene.light.color = [...LIGHT_COLORS[i].rgb];
+      syncLamp();
+      opts.reset();
+      opts.onTerm?.('le');
+    }),
+  );
+  syncLamp();
+
   // Explanations live in a caption bar under the picture (never over the render).
   const explainEl = document.getElementById('explain')!;
   const setHint = () => {
@@ -89,6 +128,7 @@ export function initControls(opts: {
 
   return {
     syncBounces,
+    syncLamp,
     setStats(spp, rays) {
       sppEl.textContent = spp.toLocaleString('en-US');
       raysEl.textContent = formatCount(rays);

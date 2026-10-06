@@ -1,4 +1,4 @@
-import { project, recordPath, type PathSegment } from '../render/cpu';
+import { cameraOf, project, recordPath, type PathSegment } from '../render/cpu';
 import type { SceneState } from '../scene';
 import type { Term } from './equation';
 
@@ -97,7 +97,7 @@ export function initPhoton(opts: {
   const aspect = () => view.clientWidth / view.clientHeight;
 
   function toPx(p: [number, number, number]): [number, number] {
-    const [nx, ny] = project(p, aspect());
+    const [nx, ny] = project(p, aspect(), cameraOf(scene));
     return [((nx + 1) / 2) * view.clientWidth, ((1 - ny) / 2) * view.clientHeight];
   }
 

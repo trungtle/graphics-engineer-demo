@@ -1,7 +1,16 @@
 import './style.css';
 import { VERT, TRACE_FRAG, DISPLAY_FRAG } from './render/shaders';
-import { defaultScene, MATERIALS, type MaterialId } from './scene';
-import { pick } from './render/cpu';
+import {
+  CAMERA_PITCH_MAX,
+  CAMERA_PITCH_MIN,
+  CAMERA_YAW_LIMIT,
+  clampLight,
+  defaultScene,
+  lightRadiance,
+  MATERIALS,
+  type MaterialId,
+} from './scene';
+import { cameraOf, ceilingPoint, pick } from './render/cpu';
 import { initControls, MATERIAL_BLURB } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
@@ -64,6 +73,10 @@ const uTrace = {
   objMat: loc(traceProg, 'u_objMat'),
   light: loc(traceProg, 'u_light'),
   lightCol: loc(traceProg, 'u_lightCol'),
+  camPos: loc(traceProg, 'u_camPos'),
+  camRight: loc(traceProg, 'u_camRight'),
+  camUp: loc(traceProg, 'u_camUp'),
+  camFwd: loc(traceProg, 'u_camFwd'),
 };
 const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res') };
 gl.bindVertexArray(gl.createVertexArray());
@@ -114,6 +127,7 @@ function resize() {
   }
 }
 
+let pickedText = '';
 let photon: ReturnType<typeof initPhoton> | undefined;
 const reset = () => {
   frame = 0;
@@ -138,26 +152,133 @@ function cycleMaterial(i: number) {
   reset();
 }
 
-// Tap = short, small movement. Taps on objects cycle their material; other gestures are left to later tasks (orbit, lamp drag).
-let pickedText = '';
-let down: { x: number; y: number; t: number } | null = null;
-canvas.addEventListener('pointerdown', (e) => {
-  down = { x: e.clientX, y: e.clientY, t: performance.now() };
-});
-canvas.addEventListener('pointerup', (e) => {
-  const d = down;
-  down = null;
-  if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10 || performance.now() - d.t > 300) return;
+// Pointer gestures on the picture:
+//  - press the lamp and drag: move it along the ceiling
+//  - drag anywhere else: orbit the camera (limited arc)
+//  - short tap: on an object cycles its material (or sends a photon in photon mode); on the lamp explains it
+//  - double-tap on the background: reset the view
+const TAP_MOVE_PX = 10;
+const TAP_MS = 300;
+const DOUBLE_TAP_MS = 350;
+const ORBIT_YAW_PER_PX = 0.004;
+const ORBIT_PITCH_PER_PX = 0.003;
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+interface Drag {
+  id: number;
+  x0: number;
+  y0: number;
+  t0: number;
+  mode: 'pending' | 'lamp' | 'orbit';
+  yaw0: number;
+  pitch0: number;
+  lampDx: number;
+  lampDz: number;
+}
+let drag: Drag | null = null;
+let lastTap: { t: number; x: number; y: number } | null = null;
+
+function ndcOf(e: PointerEvent): { nx: number; ny: number; aspect: number } {
   const r = canvas.getBoundingClientRect();
-  const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
-  const ny = 1 - ((e.clientY - r.top) / r.height) * 2;
-  const h = pick(nx, ny, r.width / r.height, scene);
+  return { nx: ((e.clientX - r.left) / r.width) * 2 - 1, ny: 1 - ((e.clientY - r.top) / r.height) * 2, aspect: r.width / r.height };
+}
+
+function resetView() {
+  scene.camera.yaw = 0;
+  scene.camera.pitch = 0;
+  ui.toast('View reset', 'Back to straight on', 1800);
+  reset();
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  const { nx, ny, aspect } = ndcOf(e);
+  const h = pick(nx, ny, aspect, scene);
+  const d: Drag = {
+    id: e.pointerId,
+    x0: e.clientX,
+    y0: e.clientY,
+    t0: performance.now(),
+    mode: 'pending',
+    yaw0: scene.camera.yaw,
+    pitch0: scene.camera.pitch,
+    lampDx: 0,
+    lampDz: 0,
+  };
+  if (h?.surface === 'light') {
+    const c = ceilingPoint(nx, ny, aspect, cameraOf(scene));
+    if (c) {
+      d.mode = 'lamp';
+      d.lampDx = scene.light.x - c[0];
+      d.lampDz = scene.light.z - c[1];
+    }
+  }
+  drag = d;
+  try {
+    canvas.setPointerCapture(e.pointerId);
+  } catch {
+    /* synthetic or unsupported pointer: fine */
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  const d = drag;
+  if (!d || e.pointerId !== d.id) return;
+  const dx = e.clientX - d.x0;
+  const dy = e.clientY - d.y0;
+  if (d.mode === 'pending' && Math.hypot(dx, dy) > TAP_MOVE_PX) d.mode = 'orbit';
+  if (d.mode === 'orbit') {
+    scene.camera.yaw = clamp(d.yaw0 - dx * ORBIT_YAW_PER_PX, -CAMERA_YAW_LIMIT, CAMERA_YAW_LIMIT);
+    scene.camera.pitch = clamp(d.pitch0 + dy * ORBIT_PITCH_PER_PX, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+    reset();
+  } else if (d.mode === 'lamp' && Math.hypot(dx, dy) > 2) {
+    const { nx, ny, aspect } = ndcOf(e);
+    const c = ceilingPoint(nx, ny, aspect, cameraOf(scene));
+    if (c) {
+      scene.light.x = c[0] + d.lampDx;
+      scene.light.z = c[1] + d.lampDz;
+      clampLight(scene.light);
+      reset();
+      eq.highlight('le');
+    }
+  }
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  const d = drag;
+  drag = null;
+  if (!d || e.pointerId !== d.id) return;
+  const moved = Math.hypot(e.clientX - d.x0, e.clientY - d.y0);
+  const quick = performance.now() - d.t0 <= TAP_MS;
+  if (moved > TAP_MOVE_PX || !quick) return;
+  // a tap
+  const { nx, ny, aspect } = ndcOf(e);
+  const h = pick(nx, ny, aspect, scene);
   pickedText = h ? (h.surface === 'object' ? `object ${h.objectIndex}` : h.surface) : 'background';
-  if (photon?.enabled) photon.trace(nx, ny);
-  else if (h?.surface === 'object') cycleMaterial(h.objectIndex);
+  if (photon?.enabled) {
+    photon.trace(nx, ny);
+    return;
+  }
+  if (h?.surface === 'object') {
+    cycleMaterial(h.objectIndex);
+    lastTap = null;
+    return;
+  }
+  if (h?.surface === 'light') {
+    ui.toast('The lamp', 'Drag it around the ceiling, or change its color and size', 3500);
+    eq.highlight('le');
+    lastTap = null;
+    return;
+  }
+  const now = performance.now();
+  if (lastTap && now - lastTap.t < DOUBLE_TAP_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
+    resetView();
+    lastTap = null;
+  } else {
+    lastTap = { t: now, x: e.clientX, y: e.clientY };
+  }
 });
 canvas.addEventListener('pointercancel', () => {
-  down = null;
+  drag = null;
 });
 window.addEventListener('keydown', (e) => {
   if (e.key >= '0' && e.key <= '8') {
@@ -211,7 +332,12 @@ function tick(now: number) {
   gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
   gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
   gl.uniform4f(uTrace.light, scene.light.x, scene.light.z, 0, scene.light.half);
-  gl.uniform3fv(uTrace.lightCol, scene.light.color);
+  gl.uniform3fv(uTrace.lightCol, lightRadiance(scene.light));
+  const cam = cameraOf(scene);
+  gl.uniform3fv(uTrace.camPos, cam.pos);
+  gl.uniform3fv(uTrace.camRight, cam.right);
+  gl.uniform3fv(uTrace.camUp, cam.up);
+  gl.uniform3fv(uTrace.camFwd, cam.fwd);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);
   cur = 1 - cur;
