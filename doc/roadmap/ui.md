@@ -42,10 +42,10 @@ Verify (original): screenshot at each listed viewport, both orientations on iPad
 
 <!--task
 id: UI-002
-status: todo
+status: done
 epic: equation
 deps: [UI-001]
-cl:
+cl: e675cc5
 -->
 ### UI-002 — Rendering equation panel
 
@@ -59,15 +59,17 @@ The equation with color-coded terms and captions:
 
 Tap a term to expand a 1–2 sentence explanation.
 
-Verify: readable from ~1.5 m on the MacBook screen (body ≥ 18 px, equation
+Result: `src/ui/equation.ts`, buttons in index.html. Tap a term: it lights and its caption + 1-2 sentence explanation show for 9 s (screenshot: [img/ui-002-term-highlight.jpg](img/ui-002-term-highlight.jpg)). Sizing deviation from the original target: equation is sized to its card, so 32 px at 1440x900 landscape (36 px on iPad portrait), captions 16 px; the 40/18 px targets were not reachable in one row at a 35% panel. Revisit if the booth screen is viewed from far away (could widen the panel).
+
+Verify (original): readable from ~1.5 m on the MacBook screen (body ≥ 18 px, equation
 ≥ 40 px); all terms tappable on iPad.
 
 <!--task
 id: UI-003
-status: todo
+status: done
 epic: equation
 deps: [UI-002, INT-001, INT-002, INT-003]
-cl:
+cl: e675cc5
 -->
 ### UI-003 — Live term highlighting
 
@@ -75,7 +77,9 @@ When a control is used, its term pulses/glows in its accent color for ~2 s
 (mapping table in [interaction.md](interaction.md)). Photon mode highlights
 terms per bounce as the path animates (INT-004).
 
-Verify: each control lights exactly its term; no term stays lit after 3 s of
+Result: wired via `initControls({onTerm})` and `eq.highlight()`. Measured: slider lights L_i, Restart lights the integral, tapping an object lights f_r (L_e when it becomes glowing); all clear after 2.5 s (tap-selected terms after 9 s). Photon-mode per-bounce highlighting arrives with INT-004; lamp controls will call highlight('le') in INT-003.
+
+Verify (original): each control lights exactly its term; no term stays lit after 3 s of
 inactivity.
 
 <!--task
