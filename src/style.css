@@ -72,7 +72,7 @@ html, body {
 @media (orientation: portrait) {
   #app {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 58fr) minmax(0, 42fr) auto;
+    grid-template-rows: minmax(0, 54fr) minmax(0, 46fr) auto;
     grid-template-areas:
       'stage'
       'panel'
@@ -165,7 +165,7 @@ h2 {
   #equation .eq { font-size: clamp(26px, 8.2cqw, 64px); }
 }
 
-#controls { flex: 1 1 auto; min-height: 0; }
+
 
 #careers {
   grid-area: careers;
@@ -176,4 +176,92 @@ h2 {
   padding: var(--s-3) var(--s-5);
   color: var(--muted);
   font-size: var(--fs-small);
+}
+
+/* ---- controls ---- */
+#controls { display: flex; flex-direction: column; gap: var(--s-4); }
+
+.ctl-row { display: flex; align-items: center; gap: var(--s-4); }
+.stat { display: flex; flex-direction: column; min-width: 0; }
+.stat-num { font-size: calc(var(--fs-body) * 1.5); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-lab { font-size: var(--fs-small); color: var(--muted); }
+.btn {
+  margin-left: auto;
+  min-height: var(--tap);
+  padding: 0 var(--s-5);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 600 var(--fs-body) / 1 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn:active { background: var(--bg); transform: scale(0.97); }
+
+.ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
+.ctl-title { font-weight: 650; font-size: var(--fs-body); }
+.ctl-val { font-weight: 700; font-size: calc(var(--fs-body) * 1.4); font-variant-numeric: tabular-nums; }
+
+.slider {
+  --fill: 50%;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: var(--tap);
+  margin: 0;
+  background: transparent;
+  touch-action: pan-y;
+  cursor: pointer;
+}
+.slider::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, var(--c-li) var(--fill), var(--line) var(--fill));
+}
+.slider::-moz-range-track { height: 12px; border-radius: 6px; background: var(--line); }
+.slider::-moz-range-progress { height: 12px; border-radius: 6px; background: var(--c-li); }
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 40px;
+  height: 40px;
+  margin-top: -14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--c-li);
+  box-shadow: var(--shadow);
+}
+.slider::-moz-range-thumb { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 4px solid var(--c-li); }
+.ticks { display: flex; justify-content: space-between; padding: 0 14px; color: var(--muted); font-size: var(--fs-small); margin-top: calc(var(--s-1) * -1); }
+.cap { margin: var(--s-2) 0 0; color: var(--muted); font-size: var(--fs-small); min-height: 2.8em; }
+
+#toast {
+  position: absolute;
+  left: 50%;
+  bottom: var(--s-5);
+  transform: translate(-50%, 12px);
+  max-width: calc(100% - 2 * var(--s-5));
+  padding: var(--s-3) var(--s-5);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  border: 3px solid var(--c-fr);
+  font-size: var(--fs-body);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+#toast strong { color: var(--c-fr); }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* iPad portrait: title and equation share a row so the controls get the height */
+@media (orientation: portrait) {
+  #panel {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.8fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+  }
+  #controls { grid-column: 1 / -1; }
 }

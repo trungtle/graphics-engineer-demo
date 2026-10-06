@@ -2,6 +2,7 @@ import './style.css';
 import { VERT, TRACE_FRAG, DISPLAY_FRAG } from './render/shaders';
 import { defaultScene, MATERIALS, type MaterialId } from './scene';
 import { pick } from './render/cpu';
+import { initControls, MATERIAL_BLURB } from './ui/controls';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -114,17 +115,40 @@ function resize() {
 const reset = () => {
   frame = 0;
 };
+const ui = initControls({ scene, reset });
+
+function cycleMaterial(i: number) {
+  const o = scene.objects[i];
+  o.mat = ((o.mat + 1) % MATERIALS.length) as MaterialId;
+  const b = MATERIAL_BLURB[o.mat];
+  ui.toast(b.name, b.text);
+  reset();
+}
+
+// Tap = short, small movement. Taps on objects cycle their material; other gestures are left to later tasks (orbit, lamp drag).
 let pickedText = '';
+let down: { x: number; y: number; t: number } | null = null;
 canvas.addEventListener('pointerdown', (e) => {
+  down = { x: e.clientX, y: e.clientY, t: performance.now() };
+});
+canvas.addEventListener('pointerup', (e) => {
+  const d = down;
+  down = null;
+  if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10 || performance.now() - d.t > 300) return;
   const r = canvas.getBoundingClientRect();
   const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
   const ny = 1 - ((e.clientY - r.top) / r.height) * 2;
   const h = pick(nx, ny, r.width / r.height, scene);
-  pickedText = h ? (h.surface === 'object' ? `object ${h.objectIndex} (${MATERIALS[h.mat]})` : h.surface) : 'background';
+  pickedText = h ? (h.surface === 'object' ? `object ${h.objectIndex}` : h.surface) : 'background';
+  if (h?.surface === 'object') cycleMaterial(h.objectIndex);
+});
+canvas.addEventListener('pointercancel', () => {
+  down = null;
 });
 window.addEventListener('keydown', (e) => {
   if (e.key >= '0' && e.key <= '8') {
     scene.bounces = Number(e.key);
+    ui.syncBounces();
     reset();
   }
   if (e.key === 's') {
@@ -132,11 +156,7 @@ window.addEventListener('keydown', (e) => {
     reset();
   }
   const oi = ['q', 'w', 'e'].indexOf(e.key);
-  if (oi >= 0) {
-    const o = scene.objects[oi];
-    o.mat = ((o.mat + 1) % MATERIALS.length) as MaterialId;
-    reset();
-  }
+  if (oi >= 0) cycleMaterial(oi);
 });
 // Hook for later UI work and manual testing from the console.
 (window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick };
@@ -194,7 +214,8 @@ function tick(now: number) {
   const dt = now - last;
   last = now;
   ema = ema ? ema * 0.95 + dt * 0.05 : dt;
-  if (frame % 15 === 0) {
+  if (frame % 10 === 0) ui.setStats(frame, rw * rh * frame * (scene.bounces + 1));
+  if (frame % 15 === 0 && !hud.hidden) {
     hud.textContent =
       `${renderer}\n` +
       `format ${useF32 ? 'RGBA32F' : 'RGBA16F'}  f32:${!!extF32} f16:${!!extF16} f32lin:${!!extLin} timer:${!!extTimer}\n` +
