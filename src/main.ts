@@ -3,6 +3,7 @@ import { VERT, TRACE_FRAG, DISPLAY_FRAG } from './render/shaders';
 import { defaultScene, MATERIALS, type MaterialId } from './scene';
 import { pick } from './render/cpu';
 import { initControls, MATERIAL_BLURB } from './ui/controls';
+import { initEquation } from './ui/equation';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -115,13 +116,15 @@ function resize() {
 const reset = () => {
   frame = 0;
 };
-const ui = initControls({ scene, reset });
+const eq = initEquation();
+const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t) });
 
 function cycleMaterial(i: number) {
   const o = scene.objects[i];
   o.mat = ((o.mat + 1) % MATERIALS.length) as MaterialId;
   const b = MATERIAL_BLURB[o.mat];
   ui.toast(b.name, b.text);
+  eq.highlight(o.mat === 4 ? 'le' : 'fr');
   reset();
 }
 

@@ -162,7 +162,7 @@ h2 {
 
 #equation { container-type: inline-size; }
 @supports (font-size: 1cqw) {
-  #equation .eq { font-size: clamp(26px, 8.2cqw, 64px); }
+  #equation .eq { font-size: clamp(18px, 7.4cqw, 64px); }
 }
 
 
@@ -265,3 +265,48 @@ h2 {
   }
   #controls { grid-column: 1 / -1; }
 }
+
+/* ---- equation terms ---- */
+.term {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0 0.06em;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 0.22em;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.term.on {
+  background: rgba(22, 32, 46, 0.08);
+  box-shadow: 0 0 0 0.08em currentColor;
+  transform: translateY(-0.04em) scale(1.08);
+}
+@supports (background: color-mix(in srgb, red 10%, white)) {
+  .term.on { background: color-mix(in srgb, currentColor 14%, transparent); }
+}
+.op { color: var(--muted); }
+
+.eq-cap {
+  margin: var(--s-3) 0 0;
+  padding-left: var(--s-3);
+  border-left: 4px solid var(--line);
+  min-height: 4.2em;
+  font-size: var(--fs-small);
+  line-height: 1.35;
+  color: var(--muted);
+}
+.eq-cap strong { color: var(--ink); font-weight: 700; }
+.eq-cap[data-term='lo'] { border-color: var(--c-lo); }
+.eq-cap[data-term='le'] { border-color: var(--c-le); }
+.eq-cap[data-term='int'] { border-color: var(--c-int); }
+.eq-cap[data-term='fr'] { border-color: var(--c-fr); }
+.eq-cap[data-term='li'] { border-color: var(--c-li); }
+.eq-cap[data-term='cos'] { border-color: var(--c-cos); }
+.eq-cap[data-term='le'] strong { color: var(--c-le); }
+.eq-cap[data-term='int'] strong { color: var(--c-int); }
+.eq-cap[data-term='fr'] strong { color: var(--c-fr); }
+.eq-cap[data-term='li'] strong { color: var(--c-li); }
+.eq-cap[data-term='cos'] strong { color: var(--c-cos); }

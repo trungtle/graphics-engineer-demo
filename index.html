@@ -21,15 +21,18 @@
 
         <section id="equation" aria-label="The rendering equation">
           <h2>The rendering equation</h2>
-          <p class="eq" aria-label="L out equals L emitted plus the integral of f r times L in times cosine theta">
-            <span class="t-lo">L<sub>o</sub></span> =
-            <span class="t-le">L<sub>e</sub></span> +
-            <span class="t-int">&int;</span>
-            <span class="t-fr">f<sub>r</sub></span>
-            <span class="t-li">L<sub>i</sub></span>
-            <span class="t-cos">cos&thinsp;&theta;</span>
-            <span class="t-int">d&omega;</span>
-          </p>
+          <div class="eq" role="group" aria-label="L out equals L emitted plus the integral of f r times L in times cosine theta">
+            <button class="term t-lo" data-term="lo" type="button" aria-label="L out">L<sub>o</sub></button>
+            <span class="op">=</span>
+            <button class="term t-le" data-term="le" type="button" aria-label="L emitted">L<sub>e</sub></button>
+            <span class="op">+</span>
+            <button class="term t-int" data-term="int" type="button" aria-label="Integral">&int;</button>
+            <button class="term t-fr" data-term="fr" type="button" aria-label="f r">f<sub>r</sub></button>
+            <button class="term t-li" data-term="li" type="button" aria-label="L in">L<sub>i</sub></button>
+            <button class="term t-cos" data-term="cos" type="button" aria-label="Cosine theta">cos&thinsp;&theta;</button>
+            <button class="term t-int" data-term="int" type="button" aria-label="d omega">d&omega;</button>
+          </div>
+          <p id="eq-cap" class="eq-cap" aria-live="polite"><strong></strong> <span></span></p>
         </section>
 
         <section id="controls" aria-label="Controls"></section>

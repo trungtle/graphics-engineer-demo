@@ -1,4 +1,5 @@
 import type { MaterialId, SceneState } from '../scene';
+import type { Term } from './equation';
 
 export const MATERIAL_BLURB: Record<MaterialId, { name: string; text: string }> = {
   0: { name: 'Matte', text: 'light scatters every which way' },
@@ -29,7 +30,11 @@ export interface Controls {
   syncBounces(): void;
 }
 
-export function initControls(opts: { scene: SceneState; reset: () => void }): Controls {
+export function initControls(opts: {
+  scene: SceneState;
+  reset: () => void;
+  onTerm?: (t: Term) => void;
+}): Controls {
   const root = document.getElementById('controls')!;
   root.innerHTML = `
     <div class="ctl-row">
@@ -60,8 +65,12 @@ export function initControls(opts: { scene: SceneState; reset: () => void }): Co
     opts.scene.bounces = Number(slider.value);
     syncBounces();
     opts.reset();
+    opts.onTerm?.('li');
   });
-  root.querySelector('#restart')!.addEventListener('click', () => opts.reset());
+  root.querySelector('#restart')!.addEventListener('click', () => {
+    opts.reset();
+    opts.onTerm?.('int');
+  });
   syncBounces();
 
   const toastEl = document.createElement('div');
