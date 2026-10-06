@@ -57,3 +57,10 @@ Review it with: `git show c818460`
 
 **CL: `e675cc5`**: `src/ui/equation.ts`, term buttons + caption in index.html, styles, controls call `onTerm`; main.ts highlights f_r / L_e on material change.
 Review it with: `git show e675cc5`
+
+## Be a photon (INT-004)
+
+**Status 2026-10-06: COMPLETE on desktop; real-finger iPad test pending.**
+
+**CL: `1f297d4`**: `src/ui/photon.ts`, `cos` in cpu.ts PathSegment, toast duration param, photon button + overlay styles, 2 new tests (9 total). Key finding: ~6% of random paths reach the lamp; surfaced to students as the reason images start noisy.
+Review it with: `git show 1f297d4`

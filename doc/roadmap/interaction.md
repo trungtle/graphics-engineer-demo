@@ -83,10 +83,10 @@ shadow softness change.
 
 <!--task
 id: INT-004
-status: todo
+status: done
 epic: photon
 deps: [RND-006, UI-001]
-cl:
+cl: 1f297d4
 -->
 ### INT-004 — "Be a photon" mode
 
@@ -96,9 +96,11 @@ a time (~600 ms per segment), each bounce labelled with what happened
 ("hit red wall → picks up red", "reached the lamp!"). Paths that escape or
 die are shown too. Tap again for a new random path from the same pixel.
 
-Verify: path endpoints land on the visible surfaces in the image (no
-misalignment at any render scale); path reaching the light is the common
-case when tapping near the light.
+Result: `src/ui/photon.ts` (overlay canvas, 600 ms per segment, numbered hit dots, caption toast per bounce, equation term lit per step: first hit L_o, later hits f_r, slanted hit cos θ, lamp L_e, lost/out-of-bounces the integral) + `cos` field on PathSegment. Toggle button top-right of the picture; in photon mode taps do not change materials; any scene change clears the path and the tally. Screenshot: [img/int-004-photon-path.jpg](img/int-004-photon-path.jpg) (caption wording since improved). Overlay is drawn in CSS pixels from the 3D hit points every frame, so it stays aligned at any render scale or window size.
+
+**Finding (corrects the original criterion):** only ~5-7% of random paths reach the lamp (measured over 2000 seeds at several pixels, 2-8 bounces), not 'the common case'. Kept honest (no fake light shortcut): failed paths explain that most photons never find the lamp, which is why the picture starts noisy, and a running tally ('N of M photons found the lamp') is shown. A test asserts the 2-30% band.
+
+Verify (original, partly superseded): path endpoints land on the visible surfaces in the image (no misalignment at any render scale); the 'reaches the light is common' part was wrong, see finding.
 
 <!--task
 id: INT-005

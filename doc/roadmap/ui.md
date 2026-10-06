@@ -77,7 +77,7 @@ When a control is used, its term pulses/glows in its accent color for ~2 s
 (mapping table in [interaction.md](interaction.md)). Photon mode highlights
 terms per bounce as the path animates (INT-004).
 
-Result: wired via `initControls({onTerm})` and `eq.highlight()`. Measured: slider lights L_i, Restart lights the integral, tapping an object lights f_r (L_e when it becomes glowing); all clear after 2.5 s (tap-selected terms after 9 s). Photon-mode per-bounce highlighting arrives with INT-004; lamp controls will call highlight('le') in INT-003.
+Result: wired via `initControls({onTerm})` and `eq.highlight()`. Measured: slider lights L_i, Restart lights the integral, tapping an object lights f_r (L_e when it becomes glowing); all clear after 2.5 s (tap-selected terms after 9 s). Photon-mode per-bounce highlighting is done in INT-004; lamp controls will call highlight('le') in INT-003.
 
 Verify (original): each control lights exactly its term; no term stays lit after 3 s of
 inactivity.
