@@ -53,7 +53,7 @@ in the roadmap.
 | Renderer | [renderer.md](roadmap/renderer.md) | 4 | 3 | Scene/materials/bounces + CPU picker done (RND-003/004/006); cpu.ts must mirror shaders.ts on desktop GPU; RND-001 still needs iPad + Intel Mac numbers (float-buffer format pending) |
 | Interaction | [interaction.md](roadmap/interaction.md) | 1 | 7 | All v1 interactions done (INT-001..007, incl. All-samples view and photon first-person view); only stretch INT-S1 remains |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); presenter panel UI-006 dropped by user. Debug HUD only with ?debug |
-| Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live at www.trungtuanle.com/graphics-engineer-demo/ (account custom domain redirect); offline PWA mandatory |
+| Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live on GitHub Pages (project URL redirects to the account's custom domain); offline PWA mandatory |
 
 Completed history: [completed.md](roadmap/completed.md)
 

@@ -95,7 +95,7 @@ Bounce count is a uniform so the slider works without recompiling. Russian
 roulette only past the user-set cap's minimum of 3 so low-bounce views stay
 exact.
 
-Result: verified in-browser (RTX 4070 Ti): 8 bounces shows red/green bleed, mirror reflects walls, emissive sphere glows. Screenshot files deferred to RND-007 capture mode.
+Result: verified in-browser (desktop discrete GPU): 8 bounces shows red/green bleed, mirror reflects walls, emissive sphere glows. Screenshot files deferred to RND-007 capture mode.
 
 Verify (original): before/after pair `img/rnd-004-bounces-1.png` / `-bounces-8.png`
 showing red/green color bleeding on the floor and ceiling at 8 bounces.

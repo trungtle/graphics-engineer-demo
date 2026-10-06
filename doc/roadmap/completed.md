@@ -21,7 +21,7 @@ Review it with: `git show 4b5aa49`
 
 **Status 2026-10-06: COMPLETE: workflow green, site serves HTTP 200.**
 
-**CL: `628d265`**: deploy.yml unchanged; first run failed because Pages was not yet enabled, re-run after enabling succeeded. Project URL redirects to the account's custom domain (www.trungtuanle.com); the bare domain has a stray A record (not ours to fix in repo).
+**CL: `628d265`**: deploy.yml unchanged; first run failed because Pages was not yet enabled, re-run after enabling succeeded. Project URL redirects to the account's custom domain; the bare domain had a stray DNS record (outside this repo).
 
 ## Scene, materials, bounces (RND-003, RND-004)
 
