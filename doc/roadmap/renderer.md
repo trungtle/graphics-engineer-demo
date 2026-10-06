@@ -118,10 +118,10 @@ chosen scale logged in the presenter panel.
 
 <!--task
 id: RND-006
-status: todo
+status: done
 epic: core
 deps: [RND-003]
-cl:
+cl: 2f21e9c
 -->
 ### RND-006 — CPU-side ray picker / path recorder
 
@@ -130,7 +130,9 @@ which object a tap hits (material cycling, lamp dragging) and (b) record one
 full light path from a tapped pixel for "Be a photon". Uses a seeded RNG so a
 replayed path is deterministic. Must match the GPU scene exactly.
 
-Verify: unit test — tapping the center of each object returns that object's
+Result: `src/render/cpu.ts` (cameraRay, project, intersect, pick, recordPath, mulberry32) + 7 vitest tests (`npm test`). Parity with GPU checked: 280 sampled pixels, picker's left/right/lamp classification matched rendered colors, 0 mismatches. Normative: **any change to camera, room or materials in shaders.ts must be mirrored in cpu.ts.**
+
+Verify (original): unit test — tapping the center of each object returns that object's
 id; a recorded path's first hit equals the picked object.
 
 <!--task

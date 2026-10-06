@@ -29,3 +29,10 @@ Review it with: `git show 4b5aa49`
 
 **CL: `aa9aa52`**: `src/scene.ts` (scene state), shader now uniform-driven (3 spheres, light pos/size/color, bounce cap), 5 materials (diffuse, mirror, glass, rough metal, emissive). Dev hooks: `window.lightlab`, keys 0-8 bounces, q/w/e cycle material.
 Review it with: `git show aa9aa52`
+
+## CPU picker / path recorder (RND-006)
+
+**Status 2026-10-06: COMPLETE: 7/7 tests pass; GPU parity 280/280 pixels.**
+
+**CL: `2f21e9c`**: `src/render/cpu.ts`, `src/render/cpu.test.ts`, vitest dev dependency, tap in main.ts shows picked surface in the HUD (`s` now toggles render scale).
+Review it with: `git show 2f21e9c`
