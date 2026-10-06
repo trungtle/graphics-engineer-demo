@@ -85,3 +85,10 @@ Review it with: `git show 713d1e8`
 
 **CL: `694c5c5`**: photon.ts (many-path mode, pose/viewRect), main.ts (tracePass refactor, second inset pass, inset display with scissor), shaders (inside camera, FOV, blend, display offset), cpu.ts `cameraLookAlong`, CSS for tools/inset, 4 new tests (23 total).
 Review it with: `git show 694c5c5`
+
+## Attract mode (UI-004)
+
+**Status 2026-10-06: COMPLETE on desktop; 2 h soak and real-finger wake test pending (BOOTH-002).**
+
+**CL: `9cec387`**: `src/idle.ts`, `resetScene` in scene.ts (+test, 24 tests total), `idleCaption` and toast suppression in controls.ts, rays-since-load counter and `?idle=` wiring in main.ts, big-caption styles.
+Review it with: `git show 9cec387`

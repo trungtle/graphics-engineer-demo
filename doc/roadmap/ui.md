@@ -7,6 +7,9 @@ large readable type from a couple of meters away. English only.
 
 ## Decisions
 
+- **Attract mode design** (2026-10-06): `src/idle.ts`. Starts after 45 s of no input (`?idle=<seconds>` overrides, 0 disables; `window.lightlab.idle.setTimeoutSeconds` for the presenter panel to call). Big captions go in the caption bar under the picture (not over the render, per the explanations rule), with a pulsing 'Touch to play' tag. Show loop (~85 s): 1 stepped orbit (move, pause so the noise clears, repeat) with 'Every pixel here is a simulated ray of light'; 2 bounces 0 to 8 with the slider moving; 3 one ball becomes mirror, glass, glowing, matte; 4 lamp recolor/resize/move; 5 photon mode with two first-person photon flights; 6 'Movies spend hours on ONE frame', 'Your laptop just traced N billion rays' (rays since attract mode started), 'Tap to play'. Normal toasts are suppressed while idle. The scene is reset to defaults on entry and exit.
+- **The waking input is swallowed** (2026-10-06): the pointerdown/keydown that ends attract mode, and its pointerup/click, never reach the app, so the first touch cannot change a material or press a button. Mouse jitter under 6 px does not wake it.
+
 - **Compact layout rules** (2026-10-06): the controls card must fit at all six reference viewports with the longest term explanation open. Achieved by: no tick row under sliders, one-line captions, 36px-wide swatches (48px tall), tighter spacing in short landscape (max-height 860) and short portrait (max-height 1100) via media queries, portrait split 52/48. Any new control must re-run the six-viewport overflow check.
 
 - **Layout** (2026-10-05): landscape = render left (~65%), panel right;
@@ -86,10 +89,10 @@ inactivity.
 
 <!--task
 id: UI-004
-status: todo
+status: done
 epic: idle
 deps: [INT-005, UI-002]
-cl:
+cl: 9cec387
 -->
 ### UI-004 — Idle / attract mode
 
@@ -101,7 +104,9 @@ light), and show big rotating captions over the render:
 "Your laptop just traced 2 billion rays", "Tap to play". Any touch/mouse/key
 exits immediately into a clean default scene.
 
-Verify: leave untouched 45 s → attract mode starts; a single tap exits and the
+Result: verified with `?idle=4`: starts by itself after the timeout; the show loops through all six moments in order (yaw sweep 0 → 0.35 → -0.4 → 0.2 → 0, bounces 0..8 then 4, ball mirror/glass/matte, lamp colors, photon mode + first-person view, facts); a tap on a ball while idle wakes without cycling it (materials stay default, next tap cycles), a key press wakes without acting, 2-4 px jitter does not wake, a real move does; JS heap flat at 8-9 MB over a 40 s run. Screenshot: [img/ui-004-attract-orbit.jpg](img/ui-004-attract-orbit.jpg). The 2-hour memory soak still belongs to BOOTH-002.
+
+Verify (original): leave untouched 45 s → attract mode starts; a single tap exits and the
 scene is reset; runs 2 h without memory growth (checked in BOOTH-002).
 
 <!--task
