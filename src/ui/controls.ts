@@ -25,7 +25,7 @@ export function formatCount(n: number): string {
 
 export interface Controls {
   setStats(samplesPerPixel: number, raysTraced: number): void;
-  toast(title: string, text: string): void;
+  toast(title: string, text: string, ms?: number): void;
   /** Re-read scene.bounces into the slider (after a change made elsewhere, e.g. the keyboard). */
   syncBounces(): void;
 }
@@ -85,11 +85,11 @@ export function initControls(opts: {
       sppEl.textContent = spp.toLocaleString('en-US');
       raysEl.textContent = formatCount(rays);
     },
-    toast(title, text) {
+    toast(title, text, ms = 2600) {
       toastEl.innerHTML = `<strong>${title}:</strong> <span>${text}</span>`;
       toastEl.classList.add('show');
       window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2600);
+      toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), ms);
     },
   };
 }

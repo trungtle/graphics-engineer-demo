@@ -310,3 +310,24 @@ h2 {
 .eq-cap[data-term='fr'] strong { color: var(--c-fr); }
 .eq-cap[data-term='li'] strong { color: var(--c-li); }
 .eq-cap[data-term='cos'] strong { color: var(--c-cos); }
+
+/* ---- photon mode ---- */
+#photon-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#photon-btn {
+  position: absolute;
+  top: var(--s-4);
+  right: var(--s-4);
+  min-height: var(--tap);
+  padding: 0 var(--s-5);
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+  font: 700 var(--fs-body) / 1 inherit;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+#photon-btn.on { background: #ffd45e; box-shadow: 0 0 0 4px rgba(255, 212, 94, 0.45), var(--shadow); }
+#photon-btn:active { transform: scale(0.97); }
+#stage.photon-mode #view { cursor: crosshair; }

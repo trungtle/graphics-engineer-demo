@@ -50,6 +50,29 @@ describe('path recorder', () => {
     expect(JSON.stringify(a)).not.toBe(JSON.stringify(c));
   });
 
+  it('records an arrival angle cosine in [0,1] for every segment', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      for (const s of recordPath(-0.2, -0.3, ASPECT, scene, seed)) {
+        expect(s.cos).toBeGreaterThanOrEqual(0);
+        expect(s.cos).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('only a few random paths reach the lamp (why the image starts noisy)', () => {
+    const s = defaultScene();
+    s.bounces = 8;
+    let hits = 0;
+    const N = 300;
+    for (let seed = 1; seed <= N; seed++) {
+      const path = recordPath(0, 0.55, ASPECT, s, seed);
+      if (path[path.length - 1].event === 'light') hits++;
+    }
+    // measured ~6%: most photons never find the lamp; photon mode explains this to students
+    expect(hits / N).toBeGreaterThan(0.02);
+    expect(hits / N).toBeLessThan(0.3);
+  });
+
   it('respects the bounce limit', () => {
     const s = defaultScene();
     s.bounces = 1;

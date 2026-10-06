@@ -165,6 +165,8 @@ export interface PathSegment {
   surface: Surface | 'none';
   objectIndex: number;
   event: PathEvent;
+  /** cos of the angle between the arriving ray and the surface normal (1 = head-on, 0 = grazing) */
+  cos: number;
 }
 
 /** Trace one random light path (camera -> light direction) from a screen position. */
@@ -177,15 +179,17 @@ export function recordPath(ndcX: number, ndcY: number, aspect: number, scene: Sc
   for (let i = 0; i <= scene.bounces; i++) {
     const h = intersect(ro, rd, scene);
     if (!h) {
-      segs.push({ from: ro, to: add(ro, mul(rd, 1.5)), surface: 'none', objectIndex: -1, event: 'escaped' });
+      segs.push({ from: ro, to: add(ro, mul(rd, 1.5)), surface: 'none', objectIndex: -1, event: 'escaped', cos: 1 });
       break;
     }
+    const cosIn = Math.min(1, Math.abs(dot(rd, h.n)));
     const seg = (event: PathEvent): PathSegment => ({
       from: ro,
       to: h.p,
       surface: h.surface,
       objectIndex: h.objectIndex,
       event,
+      cos: cosIn,
     });
     if (h.emissive) {
       segs.push(seg('light'));

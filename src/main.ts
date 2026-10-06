@@ -4,6 +4,7 @@ import { defaultScene, MATERIALS, type MaterialId } from './scene';
 import { pick } from './render/cpu';
 import { initControls, MATERIAL_BLURB } from './ui/controls';
 import { initEquation } from './ui/equation';
+import { initPhoton } from './ui/photon';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -113,11 +114,20 @@ function resize() {
   }
 }
 
+let photon: ReturnType<typeof initPhoton> | undefined;
 const reset = () => {
   frame = 0;
+  photon?.clear();
 };
 const eq = initEquation();
 const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t) });
+photon = initPhoton({
+  stage: document.getElementById('stage')!,
+  view: canvas,
+  scene,
+  toast: ui.toast,
+  highlight: eq.highlight,
+});
 
 function cycleMaterial(i: number) {
   const o = scene.objects[i];
@@ -143,7 +153,8 @@ canvas.addEventListener('pointerup', (e) => {
   const ny = 1 - ((e.clientY - r.top) / r.height) * 2;
   const h = pick(nx, ny, r.width / r.height, scene);
   pickedText = h ? (h.surface === 'object' ? `object ${h.objectIndex}` : h.surface) : 'background';
-  if (h?.surface === 'object') cycleMaterial(h.objectIndex);
+  if (photon?.enabled) photon.trace(nx, ny);
+  else if (h?.surface === 'object') cycleMaterial(h.objectIndex);
 });
 canvas.addEventListener('pointercancel', () => {
   down = null;
