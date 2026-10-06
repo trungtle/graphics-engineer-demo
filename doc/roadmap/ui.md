@@ -24,10 +24,10 @@ large readable type from a couple of meters away. English only.
 
 <!--task
 id: UI-001
-status: todo
+status: done
 epic: layout
 deps: [OPS-001]
-cl:
+cl: 16ea687
 -->
 ### UI-001 — Responsive one-screen layout + design tokens
 
@@ -35,7 +35,9 @@ CSS grid layout for landscape/portrait, design tokens (colors per equation
 term, type scale, spacing), touch target sizes. No page scroll at iPad
 (1024×768 / 1180×820) or MacBook (1440×900, 1280×800) viewports.
 
-Verify: screenshot at each listed viewport, both orientations on iPad, in
+Result: `index.html` + `src/style.css` (tokens: surface, per-term accents, type scale, spacing, 48px tap). Landscape grid 65/35; portrait stacks stage/panel/careers. Measured at 1440x900, 1280x800, 1180x820, 1024x768, 820x1180, 768x1024: no page scroll, panel not overflowing, equation on one line (sized via container query). Screenshots: [landscape](img/ui-001-landscape-1440x900.jpg), [portrait](img/ui-001-portrait-820x1180.jpg). Debug readout now hidden unless `?debug`.
+
+Verify (original): screenshot at each listed viewport, both orientations on iPad, in
 `img/ui-001-*.png`; no scrollbars.
 
 <!--task

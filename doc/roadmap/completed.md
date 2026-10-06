@@ -36,3 +36,10 @@ Review it with: `git show aa9aa52`
 
 **CL: `2f21e9c`**: `src/render/cpu.ts`, `src/render/cpu.test.ts`, vitest dev dependency, tap in main.ts shows picked surface in the HUD (`s` now toggles render scale).
 Review it with: `git show 2f21e9c`
+
+## Layout + design tokens (UI-001)
+
+**Status 2026-10-06: COMPLETE: 6 viewports measured, no scroll/overflow.**
+
+**CL: `16ea687`**: index.html panel/stage/careers skeleton, src/style.css tokens + responsive grid, equation header with per-term colors, HUD behind ?debug.
+Review it with: `git show 16ea687`
