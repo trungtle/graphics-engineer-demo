@@ -1,5 +1,6 @@
 import { VERT, TRACE_FRAG, DISPLAY_FRAG } from './render/shaders';
 import { defaultScene, MATERIALS, type MaterialId } from './scene';
+import { pick } from './render/cpu';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -106,13 +107,21 @@ function resize() {
 const reset = () => {
   frame = 0;
 };
-canvas.addEventListener('pointerdown', () => {
-  scale = scale === 1 ? 0.5 : 1;
-  reset();
+let pickedText = '';
+canvas.addEventListener('pointerdown', (e) => {
+  const r = canvas.getBoundingClientRect();
+  const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
+  const ny = 1 - ((e.clientY - r.top) / r.height) * 2;
+  const h = pick(nx, ny, r.width / r.height, scene);
+  pickedText = h ? (h.surface === 'object' ? `object ${h.objectIndex} (${MATERIALS[h.mat]})` : h.surface) : 'background';
 });
 window.addEventListener('keydown', (e) => {
   if (e.key >= '0' && e.key <= '8') {
     scene.bounces = Number(e.key);
+    reset();
+  }
+  if (e.key === 's') {
+    scale = scale === 1 ? 0.5 : 1;
     reset();
   }
   const oi = ['q', 'w', 'e'].indexOf(e.key);
@@ -123,7 +132,7 @@ window.addEventListener('keydown', (e) => {
   }
 });
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick };
 
 let ema = 0;
 let last = performance.now();
@@ -184,7 +193,7 @@ function tick(now: number) {
       `format ${useF32 ? 'RGBA32F' : 'RGBA16F'}  f32:${!!extF32} f16:${!!extF16} f32lin:${!!extLin} timer:${!!extTimer}\n` +
       `target ${rw}x${rh} (scale ${scale})  bounces ${scene.bounces}\n` +
       `frame ${ema.toFixed(1)} ms (${(1000 / ema).toFixed(0)} fps)  gpu ${Number.isNaN(gpuMs) ? 'n/a' : gpuMs.toFixed(1) + ' ms'}  spp ${frame}  ~${((rw * rh * frame * (scene.bounces + 1)) / 1e9).toFixed(2)}B rays\n` +
-      `tap: scale 1/0.5   keys 0-8: bounces   q/w/e: cycle object material   ?fmt=16: half-float`;
+      `tap: pick (${pickedText || 'none'})   s: scale 1/0.5   keys 0-8: bounces   q/w/e: cycle object material   ?fmt=16: half-float`;
   }
   requestAnimationFrame(tick);
 }
