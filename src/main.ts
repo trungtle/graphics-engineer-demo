@@ -122,7 +122,7 @@ const reset = () => {
 const eq = initEquation();
 const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t) });
 photon = initPhoton({
-  stage: document.getElementById('stage')!,
+  stage: document.getElementById('viewport')!,
   view: canvas,
   scene,
   toast: ui.toast,

@@ -18,6 +18,8 @@ it, the panel lights up that term (see [ui.md](ui.md), UI-003).
 
 ## Decisions
 
+- **Explanations never overlay the render** (2026-10-06): all captions (material names, photon steps, hints) go in the caption bar directly under the picture (`#explain`, fixed height so the render does not resize). Controls call `ui.toast(title, text, ms)`, which now writes there and reverts to a hint afterwards.
+
 - **Sandbox + hints, not a guided story** (2026-10-05): every control
   available at once; no Next buttons.
 - **v1 interactions** (2026-10-05): bounces + samples, materials + light,
@@ -96,7 +98,7 @@ a time (~600 ms per segment), each bounce labelled with what happened
 ("hit red wall → picks up red", "reached the lamp!"). Paths that escape or
 die are shown too. Tap again for a new random path from the same pixel.
 
-Result: `src/ui/photon.ts` (overlay canvas, 600 ms per segment, numbered hit dots, caption toast per bounce, equation term lit per step: first hit L_o, later hits f_r, slanted hit cos θ, lamp L_e, lost/out-of-bounces the integral) + `cos` field on PathSegment. Toggle button top-right of the picture; in photon mode taps do not change materials; any scene change clears the path and the tally. Screenshot: [img/int-004-photon-path.jpg](img/int-004-photon-path.jpg) (caption wording since improved). Overlay is drawn in CSS pixels from the 3D hit points every frame, so it stays aligned at any render scale or window size.
+Result: `src/ui/photon.ts` (overlay canvas, 600 ms per segment, numbered hit dots, caption per bounce, equation term lit per step: first hit L_o, later hits f_r, slanted hit cos θ, lamp L_e, lost/out-of-bounces the integral) + `cos` field on PathSegment. Toggle button top-right of the picture; in photon mode taps do not change materials; any scene change clears the path and the tally. Screenshot: [img/int-004-photon-path.jpg](img/int-004-photon-path.jpg). Overlay is drawn in CSS pixels from the 3D hit points every frame, so it stays aligned at any render scale or window size.
 
 **Finding (corrects the original criterion):** only ~5-7% of random paths reach the lamp (measured over 2000 seeds at several pixels, 2-8 bounces), not 'the common case'. Kept honest (no fake light shortcut): failed paths explain that most photons never find the lamp, which is why the picture starts noisy, and a running tally ('N of M photons found the lamp') is shown. A test asserts the 2-30% band.
 

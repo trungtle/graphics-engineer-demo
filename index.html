@@ -9,8 +9,11 @@
   <body>
     <main id="app">
       <section id="stage" aria-label="Live path-traced scene">
-        <canvas id="view"></canvas>
-        <div id="hud" hidden></div>
+        <div id="viewport">
+          <canvas id="view"></canvas>
+          <div id="hud" hidden></div>
+        </div>
+        <p id="explain" role="status" aria-live="polite"></p>
       </section>
 
       <aside id="panel">

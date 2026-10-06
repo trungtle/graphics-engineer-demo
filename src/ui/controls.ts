@@ -16,6 +16,11 @@ const BOUNCE_CAPTION = (n: number): string =>
       ? 'Direct light: straight from the lamp to the surface'
       : 'Light bounces around: the walls tint each other';
 
+const HINT = {
+  title: 'Try it',
+  text: 'Tap a ball to change what it is made of, drag the slider to change bounces, or press Be a photon.',
+};
+
 export function formatCount(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 0 : 1)} billion`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e8 ? 0 : 1)} million`;
@@ -73,10 +78,13 @@ export function initControls(opts: {
   });
   syncBounces();
 
-  const toastEl = document.createElement('div');
-  toastEl.id = 'toast';
-  toastEl.setAttribute('role', 'status');
-  document.getElementById('stage')!.appendChild(toastEl);
+  // Explanations live in a caption bar under the picture (never over the render).
+  const explainEl = document.getElementById('explain')!;
+  const setHint = () => {
+    explainEl.classList.remove('show');
+    explainEl.innerHTML = `<strong>${HINT.title}</strong> <span>${HINT.text}</span>`;
+  };
+  setHint();
   let toastTimer = 0;
 
   return {
@@ -86,10 +94,10 @@ export function initControls(opts: {
       raysEl.textContent = formatCount(rays);
     },
     toast(title, text, ms = 2600) {
-      toastEl.innerHTML = `<strong>${title}:</strong> <span>${text}</span>`;
-      toastEl.classList.add('show');
+      explainEl.innerHTML = `<strong>${title}:</strong> <span>${text}</span>`;
+      explainEl.classList.add('show');
       window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), ms);
+      toastTimer = window.setTimeout(setHint, ms);
     },
   };
 }

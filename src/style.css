@@ -82,13 +82,38 @@ html, body {
 
 #stage {
   grid-area: stage;
-  position: relative;
   min-height: 0;
-  background: #000;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow);
 }
+
+#viewport {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  background: #000;
+}
+
+/* caption bar under the picture: fixed height so the render never resizes */
+#explain {
+  flex: none;
+  margin: 0;
+  height: calc(var(--fs-small) * 1.35 * 3 + var(--s-3) * 2);
+  padding: var(--s-3) var(--s-5);
+  border-left: 6px solid var(--line);
+  font-size: var(--fs-small);
+  line-height: 1.35;
+  color: var(--muted);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+#explain strong { color: var(--ink); }
+#explain.show { border-left-color: var(--c-fr); color: var(--ink); }
+#explain.show strong { color: var(--c-fr); }
 
 #view {
   position: absolute;
@@ -236,24 +261,6 @@ h2 {
 .ticks { display: flex; justify-content: space-between; padding: 0 14px; color: var(--muted); font-size: var(--fs-small); margin-top: calc(var(--s-1) * -1); }
 .cap { margin: var(--s-2) 0 0; color: var(--muted); font-size: var(--fs-small); min-height: 2.8em; }
 
-#toast {
-  position: absolute;
-  left: 50%;
-  bottom: var(--s-5);
-  transform: translate(-50%, 12px);
-  max-width: calc(100% - 2 * var(--s-5));
-  padding: var(--s-3) var(--s-5);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: var(--shadow);
-  border: 3px solid var(--c-fr);
-  font-size: var(--fs-body);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
-}
-#toast strong { color: var(--c-fr); }
-#toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* iPad portrait: title and equation share a row so the controls get the height */
 @media (orientation: portrait) {
@@ -330,4 +337,4 @@ h2 {
 }
 #photon-btn.on { background: #ffd45e; box-shadow: 0 0 0 4px rgba(255, 212, 94, 0.45), var(--shadow); }
 #photon-btn:active { transform: scale(0.97); }
-#stage.photon-mode #view { cursor: crosshair; }
+#viewport.photon-mode #view { cursor: crosshair; }
