@@ -38,10 +38,10 @@ Verify: `npm run build` succeeds; `npm run dev` shows a page.
 
 <!--task
 id: OPS-002
-status: doing
+status: done
 epic: deploy
 deps: [OPS-001]
-cl:
+cl: 628d265
 -->
 ### OPS-002 — GitHub Pages workflow
 

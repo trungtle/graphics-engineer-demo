@@ -53,13 +53,13 @@ in the roadmap.
 | Renderer | [renderer.md](roadmap/renderer.md) | 7 | 0 | RND-001 spike renders in desktop browser; still needs iPad + Intel Mac numbers (float-buffer format pending) |
 | Interaction | [interaction.md](roadmap/interaction.md) | 6 | 0 | v1 = bounces/samples, materials/light, Be a photon; INT-S1 is stretch |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 6 | 0 | Clean/bright theme; each equation term has an accent color shared with its controls |
-| Deploy & Booth | [deploy.md](roadmap/deploy.md) | 5 | 1 | OPS-001 done; Pages workflow written (OPS-002) but unverified until first push; offline PWA mandatory |
+| Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live at www.trungtuanle.com/graphics-engineer-demo/ (account custom domain redirect); offline PWA mandatory |
 
 Completed history: [completed.md](roadmap/completed.md)
 
 ## Next actionable
 
-**RND-001 (iPad spike)**: push so Pages deploys (OPS-002), open the URL on the
+**RND-001 (iPad spike)**: open the live Pages URL on the
 iPad and Intel MacBook, and record the HUD numbers in renderer.md. The spike is the single biggest risk:
 if iPad Safari can't render to float targets or the shader is too slow on an
 Iris iGPU, renderer decisions change before any UI is built on top.
