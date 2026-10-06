@@ -4,7 +4,8 @@ void main() {
   gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
 }`;
 
-// Spike path tracer: Cornell box (open front), two spheres, ceiling area light, diffuse only.
+// Path tracer: Cornell box (open front), 3 uniform-driven spheres, ceiling area light.
+// Materials: 0 diffuse, 1 mirror, 2 glass, 3 rough metal, 4 emissive.
 export const TRACE_FRAG = `#version 300 es
 precision highp float;
 precision highp int;
@@ -12,6 +13,11 @@ uniform sampler2D u_prev;
 uniform vec2 u_res;
 uniform int u_frame;
 uniform int u_bounces;
+uniform vec4 u_objPos[3];   // xyz center, w radius
+uniform vec4 u_objCol[3];   // rgb color
+uniform int u_objMat[3];
+uniform vec4 u_light;       // x, z center, w half-size (y fixed at ceiling)
+uniform vec3 u_lightCol;    // emitted radiance
 out vec4 outColor;
 
 uint rngState;
@@ -22,25 +28,34 @@ uint pcg(uint v) {
 }
 float rnd() { rngState = pcg(rngState); return float(rngState) * (1.0 / 4294967296.0); }
 
-const vec3 LIGHT_E = vec3(18.0, 16.0, 13.0);
-const float LIGHT_HALF = 0.3;
+const float EMISSIVE_OBJ = 6.0;
+const float METAL_ROUGH = 0.18;
+const float GLASS_IOR = 1.5;
 
-struct Hit { float t; vec3 n; vec3 albedo; vec3 emit; };
+struct Hit { float t; vec3 n; vec3 albedo; vec3 emit; int mat; };
 
-void sphere(vec3 ro, vec3 rd, vec3 c, float r, vec3 alb, inout Hit h) {
+void sphere(vec3 ro, vec3 rd, int i, inout Hit h) {
+  vec3 c = u_objPos[i].xyz;
+  float r = u_objPos[i].w;
   vec3 oc = ro - c;
   float b = dot(oc, rd);
   float disc = b * b - (dot(oc, oc) - r * r);
   if (disc < 0.0) return;
-  float s = sqrt(disc);
-  float t = -b - s;
-  if (t < 1e-3) t = -b + s;
-  if (t > 1e-3 && t < h.t) { h.t = t; h.n = normalize(ro + rd * t - c); h.albedo = alb; h.emit = vec3(0.0); }
+  float sq = sqrt(disc);
+  float t = -b - sq;
+  if (t < 1e-3) t = -b + sq;
+  if (t > 1e-3 && t < h.t) {
+    h.t = t;
+    h.n = normalize(ro + rd * t - c);
+    h.albedo = u_objCol[i].rgb;
+    int m = u_objMat[i];
+    h.mat = m;
+    h.emit = m == 4 ? u_objCol[i].rgb * EMISSIVE_OBJ : vec3(0.0);
+  }
 }
 
 Hit scene(vec3 ro, vec3 rd) {
-  Hit h; h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0);
-  // room [-1,1]^3, front (z=+1) open
+  Hit h; h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0); h.mat = 0;
   vec3 inv = 1.0 / rd;
   float tx = (rd.x < 0.0 ? -1.0 - ro.x : 1.0 - ro.x) * inv.x;
   float ty = (rd.y < 0.0 ? -1.0 - ro.y : 1.0 - ro.y) * inv.y;
@@ -56,14 +71,15 @@ Hit scene(vec3 ro, vec3 rd) {
     } else if (t == ty) {
       h.n = vec3(0.0, -sign(rd.y), 0.0);
       h.albedo = vec3(0.78);
-      if (rd.y > 0.0 && abs(p.x) < LIGHT_HALF && abs(p.z) < LIGHT_HALF) { h.emit = LIGHT_E; h.albedo = vec3(0.0); }
+      if (rd.y > 0.0 && abs(p.x - u_light.x) < u_light.w && abs(p.z - u_light.y) < u_light.w) {
+        h.emit = u_lightCol; h.albedo = vec3(0.0);
+      }
     } else {
       h.n = vec3(0.0, 0.0, 1.0);
       h.albedo = vec3(0.78);
     }
   }
-  sphere(ro, rd, vec3(-0.45, -0.62, -0.25), 0.38, vec3(0.8, 0.8, 0.8), h);
-  sphere(ro, rd, vec3(0.5, -0.72, 0.3), 0.28, vec3(0.85, 0.7, 0.2), h);
+  for (int i = 0; i < 3; i++) sphere(ro, rd, i, h);
   return h;
 }
 
@@ -84,7 +100,6 @@ void main() {
   vec3 ro = vec3(0.0, 0.0, 3.4);
   vec3 rd = normalize(vec3(uv.x * th * max(aspect, 1.0), uv.y * th / min(aspect, 1.0), -1.0));
 
-  // advance primary ray to the open front plane z=1
   float t0 = (1.0 - ro.z) / rd.z;
   vec3 p0 = ro + rd * t0;
   vec3 L = vec3(0.0);
@@ -96,10 +111,31 @@ void main() {
       Hit h = scene(ro, rd);
       if (h.t > 1e19) break;
       L += thr * h.emit;
-      if (i == u_bounces) break;
-      ro = ro + rd * h.t + h.n * 1e-3;
-      rd = cosineDir(h.n);
-      thr *= h.albedo;
+      if (i == u_bounces || h.mat == 4) break;
+      vec3 p = ro + rd * h.t;
+      vec3 n = h.n;
+      bool inside = dot(rd, n) > 0.0;
+      if (inside) n = -n;  // n now faces against the ray
+      if (h.mat == 0) {
+        ro = p + n * 1e-3; rd = cosineDir(n); thr *= h.albedo;
+      } else if (h.mat == 1) {
+        ro = p + n * 1e-3; rd = reflect(rd, n); thr *= h.albedo;
+      } else if (h.mat == 3) {
+        vec3 r = normalize(reflect(rd, n) + METAL_ROUGH * cosineDir(n));
+        if (dot(r, n) <= 0.0) r = reflect(rd, n);
+        ro = p + n * 1e-3; rd = r; thr *= h.albedo;
+      } else {
+        float eta = inside ? GLASS_IOR : 1.0 / GLASS_IOR;
+        float cosi = clamp(dot(-rd, n), 0.0, 1.0);
+        float r0 = (1.0 - GLASS_IOR) / (1.0 + GLASS_IOR); r0 *= r0;
+        float fres = r0 + (1.0 - r0) * pow(1.0 - cosi, 5.0);
+        vec3 refr = refract(rd, n, eta);
+        if (dot(refr, refr) == 0.0 || rnd() < fres) {
+          ro = p + n * 1e-3; rd = reflect(rd, n);
+        } else {
+          ro = p - n * 1e-3; rd = refr; thr *= h.albedo;
+        }
+      }
     }
   }
   vec4 prev = texelFetch(u_prev, ivec2(gl_FragCoord.xy), 0);

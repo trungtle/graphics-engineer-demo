@@ -1,4 +1,5 @@
 import { VERT, TRACE_FRAG, DISPLAY_FRAG } from './render/shaders';
+import { defaultScene, MATERIALS, type MaterialId } from './scene';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -47,6 +48,11 @@ const uTrace = {
   res: loc(traceProg, 'u_res'),
   frame: loc(traceProg, 'u_frame'),
   bounces: loc(traceProg, 'u_bounces'),
+  objPos: loc(traceProg, 'u_objPos'),
+  objCol: loc(traceProg, 'u_objCol'),
+  objMat: loc(traceProg, 'u_objMat'),
+  light: loc(traceProg, 'u_light'),
+  lightCol: loc(traceProg, 'u_lightCol'),
 };
 const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res') };
 gl.bindVertexArray(gl.createVertexArray());
@@ -58,7 +64,7 @@ let rw = 0;
 let rh = 0;
 let frame = 0;
 let scale = Number(params.get('scale') ?? '1');
-let bounces = 4;
+const scene = defaultScene();
 
 function makeTarget(w: number, h: number): Target {
   const tex = gl.createTexture()!;
@@ -106,10 +112,18 @@ canvas.addEventListener('pointerdown', () => {
 });
 window.addEventListener('keydown', (e) => {
   if (e.key >= '0' && e.key <= '8') {
-    bounces = Number(e.key);
+    scene.bounces = Number(e.key);
+    reset();
+  }
+  const oi = ['q', 'w', 'e'].indexOf(e.key);
+  if (oi >= 0) {
+    const o = scene.objects[oi];
+    o.mat = ((o.mat + 1) % MATERIALS.length) as MaterialId;
     reset();
   }
 });
+// Hook for later UI work and manual testing from the console.
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset };
 
 let ema = 0;
 let last = performance.now();
@@ -142,7 +156,12 @@ function tick(now: number) {
   gl.uniform1i(uTrace.prev, 0);
   gl.uniform2f(uTrace.res, rw, rh);
   gl.uniform1i(uTrace.frame, frame);
-  gl.uniform1i(uTrace.bounces, bounces);
+  gl.uniform1i(uTrace.bounces, scene.bounces);
+  gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
+  gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
+  gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
+  gl.uniform4f(uTrace.light, scene.light.x, scene.light.z, 0, scene.light.half);
+  gl.uniform3fv(uTrace.lightCol, scene.light.color);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);
   cur = 1 - cur;
@@ -163,9 +182,9 @@ function tick(now: number) {
     hud.textContent =
       `${renderer}\n` +
       `format ${useF32 ? 'RGBA32F' : 'RGBA16F'}  f32:${!!extF32} f16:${!!extF16} f32lin:${!!extLin} timer:${!!extTimer}\n` +
-      `target ${rw}x${rh} (scale ${scale})  bounces ${bounces}\n` +
-      `frame ${ema.toFixed(1)} ms (${(1000 / ema).toFixed(0)} fps)  gpu ${Number.isNaN(gpuMs) ? 'n/a' : gpuMs.toFixed(1) + ' ms'}  spp ${frame}\n` +
-      `tap: toggle scale 1/0.5   keys 0-8: bounces   ?fmt=16 forces half-float`;
+      `target ${rw}x${rh} (scale ${scale})  bounces ${scene.bounces}\n` +
+      `frame ${ema.toFixed(1)} ms (${(1000 / ema).toFixed(0)} fps)  gpu ${Number.isNaN(gpuMs) ? 'n/a' : gpuMs.toFixed(1) + ' ms'}  spp ${frame}  ~${((rw * rh * frame * (scene.bounces + 1)) / 1e9).toFixed(2)}B rays\n` +
+      `tap: scale 1/0.5   keys 0-8: bounces   q/w/e: cycle object material   ?fmt=16: half-float`;
   }
   requestAnimationFrame(tick);
 }
