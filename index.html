@@ -2,18 +2,41 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f6fa" />
     <title>Light Lab</title>
-    <style>
-      html, body { margin: 0; height: 100%; background: #f6f7f9; font-family: system-ui, sans-serif; overflow: hidden; }
-      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-      #hud { position: fixed; left: 12px; bottom: 12px; padding: 8px 12px; background: rgba(255,255,255,.9);
-             border-radius: 10px; font: 14px/1.4 ui-monospace, monospace; white-space: pre; color: #222; pointer-events: none; }
-    </style>
   </head>
   <body>
-    <canvas id="view"></canvas>
-    <div id="hud">starting…</div>
+    <main id="app">
+      <section id="stage" aria-label="Live path-traced scene">
+        <canvas id="view"></canvas>
+        <div id="hud" hidden></div>
+      </section>
+
+      <aside id="panel">
+        <header id="brand">
+          <h1>Light Lab</h1>
+          <p>How a computer paints with light</p>
+        </header>
+
+        <section id="equation" aria-label="The rendering equation">
+          <h2>The rendering equation</h2>
+          <p class="eq" aria-label="L out equals L emitted plus the integral of f r times L in times cosine theta">
+            <span class="t-lo">L<sub>o</sub></span> =
+            <span class="t-le">L<sub>e</sub></span> +
+            <span class="t-int">&int;</span>
+            <span class="t-fr">f<sub>r</sub></span>
+            <span class="t-li">L<sub>i</sub></span>
+            <span class="t-cos">cos&thinsp;&theta;</span>
+            <span class="t-int">d&omega;</span>
+          </p>
+        </section>
+
+        <section id="controls" aria-label="Controls"></section>
+      </aside>
+
+      <footer id="careers"></footer>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

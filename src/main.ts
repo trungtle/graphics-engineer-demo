@@ -1,17 +1,21 @@
+import './style.css';
 import { VERT, TRACE_FRAG, DISPLAY_FRAG } from './render/shaders';
 import { defaultScene, MATERIALS, type MaterialId } from './scene';
 import { pick } from './render/cpu';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
+const params = new URLSearchParams(location.search);
+// The readout is a dev/device-test aid: show it with ?debug (later: presenter panel, UI-006).
+hud.hidden = !params.has('debug');
 const glOrNull = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true });
 if (!glOrNull) {
+  hud.hidden = false;
   hud.textContent = 'WebGL2 not available';
   throw new Error('no webgl2');
 }
 const gl: WebGL2RenderingContext = glOrNull;
 
-const params = new URLSearchParams(location.search);
 const extF32 = gl.getExtension('EXT_color_buffer_float');
 const extF16 = gl.getExtension('EXT_color_buffer_half_float');
 const extLin = gl.getExtension('OES_texture_float_linear');
@@ -24,7 +28,10 @@ const useF32 = !!extF32 && params.get('fmt') !== '16';
 const internalFormat = useF32 ? gl.RGBA32F : gl.RGBA16F;
 const texType = useF32 ? gl.FLOAT : gl.HALF_FLOAT;
 const linearOk = useF32 ? !!extLin : true;
-if (!extF32 && !extF16) hud.textContent = 'No float render targets';
+if (!extF32 && !extF16) {
+  hud.hidden = false;
+  hud.textContent = 'No float render targets';
+}
 
 function compile(type: number, src: string): WebGLShader {
   const s = gl.createShader(type)!;

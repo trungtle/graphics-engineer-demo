@@ -1,0 +1,179 @@
+/* Light Lab: clean & bright. Design tokens first; one accent per rendering-equation term. */
+:root {
+  /* surface */
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --line: #e3e8ef;
+  --ink: #16202e;
+  --muted: #5b677a;
+
+  /* one accent per equation term (reused on the controls that drive it) */
+  --c-lo: #16202e; /* L_o  light you see */
+  --c-le: #e08600; /* L_e  emission */
+  --c-int: #d6336c; /* integral  sampling / noise */
+  --c-fr: #2563eb; /* f_r  material */
+  --c-li: #7c3aed; /* L_i  incoming light / bounces */
+  --c-cos: #0f9d8a; /* cos theta */
+
+  /* type scale (readable from ~1.5 m) */
+  --fs-body: clamp(16px, 1.25vw + 8px, 20px);
+  --fs-small: clamp(13px, 0.9vw + 6px, 16px);
+  --fs-h1: clamp(28px, 2.6vw + 12px, 44px);
+  --fs-eq: clamp(32px, 3vw + 14px, 54px);
+
+  /* spacing + shape */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --radius: 18px;
+  --tap: 48px; /* minimum touch target */
+  --shadow: 0 1px 2px rgba(22, 32, 46, 0.06), 0 8px 24px rgba(22, 32, 46, 0.06);
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 var(--fs-body) / 1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100vh;
+  height: 100dvh;
+  padding: calc(var(--s-4) + var(--safe-t)) calc(var(--s-4) + var(--safe-r)) calc(var(--s-4) + var(--safe-b))
+    calc(var(--s-4) + var(--safe-l));
+  display: grid;
+  gap: var(--s-4);
+  grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'stage panel'
+    'careers careers';
+}
+
+/* iPad portrait (and any tall window): render on top, panel below */
+@media (orientation: portrait) {
+  #app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 58fr) minmax(0, 42fr) auto;
+    grid-template-areas:
+      'stage'
+      'panel'
+      'careers';
+  }
+}
+
+#stage {
+  grid-area: stage;
+  position: relative;
+  min-height: 0;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+#view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+#hud {
+  position: absolute;
+  left: var(--s-3);
+  bottom: var(--s-3);
+  max-width: calc(100% - 2 * var(--s-3));
+  padding: var(--s-2) var(--s-3);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 10px;
+  font: 12px / 1.4 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
+#panel {
+  grid-area: panel;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+#panel > section,
+#panel > header {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--s-4) var(--s-5);
+}
+
+#brand h1 { margin: 0; font-size: var(--fs-h1); line-height: 1.1; letter-spacing: -0.02em; }
+#brand p { margin: var(--s-1) 0 0; color: var(--muted); font-size: var(--fs-small); }
+
+h2 {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-small);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.eq {
+  margin: 0;
+  font-family: 'Cambria Math', Cambria, 'STIX Two Math', 'Times New Roman', serif;
+  font-style: italic;
+  font-size: var(--fs-eq);
+  line-height: 1.25;
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  align-items: baseline;
+  gap: 0 0.28em;
+}
+.eq sub { font-size: 0.55em; font-style: normal; }
+.t-lo { color: var(--c-lo); }
+.t-le { color: var(--c-le); }
+.t-int { color: var(--c-int); }
+.t-fr { color: var(--c-fr); }
+.t-li { color: var(--c-li); }
+.t-cos { color: var(--c-cos); }
+
+#equation { container-type: inline-size; }
+@supports (font-size: 1cqw) {
+  #equation .eq { font-size: clamp(26px, 8.2cqw, 64px); }
+}
+
+#controls { flex: 1 1 auto; min-height: 0; }
+
+#careers {
+  grid-area: careers;
+  min-height: var(--tap);
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--s-3) var(--s-5);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
