@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AREA-001 — Task Title</title>
+<style>
+  /* Theme-aware: dark by default, light via media query or data-theme. */
+  :root {
+    --bg: #16130f; --surface: #1f1a13; --text: #e9e3d6; --muted: #9a927f;
+    --accent: #d9a648; --line: #373022; --figure-bg: #0c0a07;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f0e8; --surface: #fbf9f4; --text: #262015; --muted: #6f6652;
+      --accent: #96690f; --line: #d9d1c0; --figure-bg: #14110c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16130f; --surface: #1f1a13; --text: #e9e3d6; --muted: #9a927f;
+    --accent: #d9a648; --line: #373022; --figure-bg: #0c0a07;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f0e8; --surface: #fbf9f4; --text: #262015; --muted: #6f6652;
+    --accent: #96690f; --line: #d9d1c0; --figure-bg: #14110c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6; font-size: 16px;
+  }
+  .wrap { max-width: 1150px; margin: 0 auto; padding: 0 24px 96px; }
+  .prose { max-width: 700px; }
+  h1, h2, .eyebrow, .stat b, .stat span, .slider-tag {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  header { padding: 64px 0 40px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 18px;
+  }
+  h1 { font-size: 34px; margin: 0; line-height: 1.25; }
+  h2 { font-size: 20px; margin: 56px 0 16px; color: var(--accent); }
+
+  /* Before/after comparison slider (drag the divider). */
+  .compare {
+    position: relative; overflow: hidden; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--figure-bg); cursor: ew-resize;
+    user-select: none;
+  }
+  .compare img { display: block; width: 100%; pointer-events: none; }
+  .compare .top {
+    position: absolute; inset: 0; overflow: hidden;
+    width: var(--pos, 50%); border-right: 2px solid var(--accent);
+  }
+  .compare .top img { width: auto; height: 100%; max-width: none; }
+  .slider-tag {
+    position: absolute; top: 10px; font-size: 12px; padding: 4px 10px;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .slider-tag.left { left: 10px; } .slider-tag.right { right: 10px; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 16px; margin: 32px 0; }
+  .stat {
+    flex: 1 1 200px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 18px;
+  }
+  .stat b { display: block; font-size: 26px; color: var(--accent); }
+  .stat span { font-size: 13px; color: var(--muted); }
+
+  figure { margin: 24px 0; }
+  figure img {
+    max-width: 100%; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--figure-bg);
+  }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  code {
+    font-family: ui-monospace, Consolas, monospace; font-size: 14px;
+    background: var(--surface); padding: 2px 6px; border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">AREA-001 · epic-name · YYYY-MM-DD · cl abc1234</p>
+    <h1>One-sentence statement of what this task achieved.</h1>
+  </header>
+
+  <!-- Before/after slider: two same-size screenshots, drag to compare. -->
+  <div class="compare" id="cmp" style="--pos: 50%;">
+    <img src="area-001-before.png" alt="before">
+    <div class="top"><img src="area-001-after.png" alt="after" id="cmpTop"></div>
+    <span class="slider-tag left"><b>after</b> (AREA-001)</span>
+    <span class="slider-tag right">before</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>+44%</b><span>headline measurement</span></div>
+    <div class="stat"><b>0.06</b><span>secondary measurement</span></div>
+    <div class="stat"><b>0</b><span>validation errors / regressions</span></div>
+  </div>
+
+  <div class="prose">
+    <h2>What changed</h2>
+    <p>Prose explanation of the approach and the key implementation points,
+    referencing files as <code>path/File.cpp:123</code>.</p>
+
+    <h2>Verified</h2>
+    <p>Exactly how completion was confirmed: commands run, numbers measured,
+    thresholds passed. This section is what makes the report trustworthy.</p>
+  </div>
+</div>
+<script>
+  // Slider drag. Top image must be re-widened to match container so the two
+  // layers stay pixel-aligned while the clip window (--pos) moves.
+  const cmp = document.getElementById('cmp');
+  const top = document.getElementById('cmpTop');
+  function sync() { top.style.width = cmp.clientWidth + 'px'; }
+  addEventListener('resize', sync); addEventListener('load', sync);
+  function setPos(x) {
+    const r = cmp.getBoundingClientRect();
+    cmp.style.setProperty('--pos',
+      Math.max(0, Math.min(100, (x - r.left) / r.width * 100)) + '%');
+  }
+  cmp.addEventListener('pointerdown', e => {
+    setPos(e.clientX); cmp.setPointerCapture(e.pointerId);
+    cmp.onpointermove = ev => setPos(ev.clientX);
+    cmp.onpointerup = () => cmp.onpointermove = null;
+  });
+</script>
+</body>
+</html>
