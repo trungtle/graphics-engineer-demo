@@ -29,10 +29,10 @@ it, the panel lights up that term (see [ui.md](ui.md), UI-003).
 
 <!--task
 id: INT-001
-status: todo
+status: done
 epic: controls
 deps: [RND-004, UI-001]
-cl:
+cl: c818460
 -->
 ### INT-001 — Bounces slider + samples readout
 
@@ -41,15 +41,17 @@ Big slider 0–8 with labelled stops ("only the lamp", "direct light",
 counter, plus a **Restart** button that resets accumulation so the presenter
 can show the noise clearing on demand.
 
-Verify: dragging to 0/1/8 visibly changes the image within one frame; counter
+Result: `src/ui/controls.ts` + styles. Slider (0-8, 40px thumb), live samples/rays counters, Restart. Keyboard 0-8 still works and syncs the slider. Screenshot: [8 bounces](img/int-001-bounces-8-landscape.jpg). Real-finger test on iPad still pending (BOOTH-002).
+
+Verify (original): dragging to 0/1/8 visibly changes the image within one frame; counter
 resets on restart; works with finger on iPad.
 
 <!--task
 id: INT-002
-status: todo
+status: done
 epic: controls
 deps: [RND-006, UI-001]
-cl:
+cl: c818460
 -->
 ### INT-002 — Tap object to cycle material
 
@@ -57,7 +59,9 @@ Tap an object in the render: it cycles diffuse → mirror → glass → metal �
 glowing. Short toast names the material ("Glass — light bends through it").
 Distinguish tap from drag (movement < 10 px, < 300 ms).
 
-Verify: each object cycles through all 5 materials on iPad and Mac; tapping a
+Result: tapping an object cycles its material and shows a toast. Decision: tapping a wall or background does nothing. Tested with synthetic pointer events: tap cycles, 30px drag and 500ms press do not, wall tap does not. iPad real-finger test pending (BOOTH-002).
+
+Verify (original): each object cycles through all 5 materials on iPad and Mac; tapping a
 wall does nothing (or cycles wall color — decide in implementation and record
 it here).
 

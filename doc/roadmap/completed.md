@@ -43,3 +43,10 @@ Review it with: `git show 2f21e9c`
 
 **CL: `16ea687`**: index.html panel/stage/careers skeleton, src/style.css tokens + responsive grid, equation header with per-term colors, HUD behind ?debug.
 Review it with: `git show 16ea687`
+
+## First controls (INT-001, INT-002)
+
+**Status 2026-10-06: COMPLETE on desktop; real-finger iPad test pending.**
+
+**CL: `c818460`**: `src/ui/controls.ts` (slider, counters, restart, toast), tap detection in main.ts (<10px, <300ms), portrait layout fix (title and equation share a row). Note: a stale dev-server transform once hid new imports; restarting `npm run dev` fixed it.
+Review it with: `git show c818460`
