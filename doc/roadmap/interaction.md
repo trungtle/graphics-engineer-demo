@@ -141,3 +141,30 @@ cl:
 bounces to match. Score by perceptual diff of a low-res capture. Not in v1.
 
 Verify: a matching configuration scores ≥ 90%; random configuration < 50%.
+
+<!--task
+id: INT-006
+status: done
+epic: photon
+deps: [INT-004]
+cl: 694c5c5
+-->
+### INT-006 — Photon mode: "All samples" view
+
+Toggle in photon mode (top-left pill). Tap a pixel and 128 of its sample paths are traced at once and revealed over about 5.5 s: dead ends pile up as faint thin lines, the few that find the lamp glow in the lamp's color, the selected pixel is ringed. The caption keeps a running count and the running average color of the revealed paths, and at the end shows it next to the real pixel color from the picture and how many samples the renderer has taken there (e.g. '2 of 128 found the lamp (2%). Their average (113, 131, 94). Pixel in the picture (7,044 samples): (181, 183, 152)'). Lights the integral term. Logic (`samplePaths`, `summarize`) is pure and tested, including that more samples vary less (Monte Carlo converges).
+
+Verify: tests pass (23 total); live run shows the fan of paths, running caption and final caption. Screenshot: [img/int-006-all-samples.jpg](img/int-006-all-samples.jpg). 128 is a constant (`SAMPLES` in photon.ts), not all of the thousands the renderer took: the caption says how many the renderer took.
+
+<!--task
+id: INT-007
+status: done
+epic: photon
+deps: [INT-004]
+cl: 694c5c5
+-->
+### INT-007 — Photon's first-person view
+
+While a single photon flies, a small inset (top-right under the Photon button, 4:3, labelled "Photon's view", toggle pill top-left) shows the box as the photon would see it, at full brightness while the main view is dimmed. Camera = the photon's position along the path, looking along its direction of travel, turning toward the next leg during each hit's dwell. Implemented as a second path-trace pass (shader uniforms `u_inside`, `u_th`, `u_blend`; display `u_off`) into a 160x120 target with 10 sample passes per frame and a short history blend (0.07) to keep noise down while moving; the display pass draws it into the inset rectangle with a scissor. The main-view path overlay is clipped so it never draws over the inset. Off in All-samples mode. Costs nothing when no photon is flying.
+
+Verify: inset appears only during a photon flight and shows what the photon is looking at (e.g. the red wall close up). Screenshot: [img/int-007-photon-first-person.jpg](img/int-007-photon-first-person.jpg). Perf on iPad/Intel Mac still to be measured in BOOTH-002.
+

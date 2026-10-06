@@ -78,3 +78,10 @@ Review it with: `git show bb4b091`
 
 **CL: `713d1e8`**: dimming uniform in DISPLAY_FRAG, glow rendering in photon.ts, classify/pathColor/toDisplay + tests, readPixel from the float accumulation target (guarded when nothing accumulated), slower pacing, result-only caption.
 Review it with: `git show 713d1e8`
+
+## All-samples view and photon first-person view (INT-006, INT-007)
+
+**Status 2026-10-06: COMPLETE on desktop; iPad/Intel perf pending.**
+
+**CL: `694c5c5`**: photon.ts (many-path mode, pose/viewRect), main.ts (tracePass refactor, second inset pass, inset display with scissor), shaders (inside camera, FOV, blend, display offset), cpu.ts `cameraLookAlong`, CSS for tools/inset, 4 new tests (23 total).
+Review it with: `git show 694c5c5`
