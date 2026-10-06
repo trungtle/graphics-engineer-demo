@@ -101,6 +101,10 @@ interface ManyState {
   paths: PathSegment[][];
   outcomes: Outcome[];
   colors: Vec3[];
+  /** per path: the color it carries after each bounce (hue of the lamp, tinted by the surfaces hit) */
+  tints: Vec3[][];
+  /** the real pixel color from the picture (0-255), shown as the target ring */
+  pixelRef: [number, number, number] | null;
   tapNdc: [number, number];
   start: number;
   counted: number;
@@ -357,19 +361,24 @@ export function initPhoton(opts: {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.globalCompositeOperation = 'lighter';
-    // dead ends: faint thin lines that pile up
-    ctx.strokeStyle = 'rgba(190,205,235,0.16)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
+    // Every path takes on the color it picks up: it starts as the lamp's hue and is tinted by each
+    // surface it bounces off. Dead ends are faint; paths that found the lamp glow.
+    const seg = (pts: [number, number][], tint: Vec3[], k: number) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[k][0], pts[k][1]);
+      ctx.lineTo(pts[k + 1][0], pts[k + 1][1]);
+      return tint[k];
+    };
+    ctx.lineWidth = 1.3;
     for (let j = 0; j < ms.counted; j++) {
       if (ms.outcomes[j] === 'light') continue;
       const pts = polyline(ms.paths[j]);
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      for (let k = 0; k < pts.length - 1; k++) {
+        const c = seg(pts, ms.tints[j], k);
+        ctx.strokeStyle = rgba(c, 0.2, 0.3);
+        ctx.stroke();
+      }
     }
-    ctx.stroke();
-    // paths that found the lamp: bright and glowing, in the lamp's color
-    const hue = lampHue();
     for (let j = 0; j < ms.counted; j++) {
       if (ms.outcomes[j] !== 'light') continue;
       const pts = polyline(ms.paths[j]);
@@ -377,38 +386,46 @@ export function initPhoton(opts: {
         [8, 0.2, 0.35],
         [2.6, 0.95, 0.5],
       ] as const) {
-        ctx.strokeStyle = rgba(hue, a, lift);
         ctx.lineWidth = w;
-        ctx.beginPath();
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
-        ctx.stroke();
+        for (let k = 0; k < pts.length - 1; k++) {
+          const c = seg(pts, ms.tints[j], k);
+          ctx.strokeStyle = rgba(c, a, lift);
+          ctx.stroke();
+        }
       }
       const e = pts[pts.length - 1];
-      glow(e[0], e[1], 26, hue, 0.5);
+      glow(e[0], e[1], 26, ms.tints[j][ms.tints[j].length - 1], 0.5);
     }
     // the newest few paths flash white so the eye can follow the reveal
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
     for (let j = Math.max(0, ms.counted - 3); j < ms.counted; j++) {
       const pts = polyline(ms.paths[j]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(pts[0][0], pts[0][1]);
       for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
       ctx.stroke();
     }
-    // the selected pixel
+    // The selected pixel is the accumulator: its disc fills with the running average color of the
+    // paths so far, inside a ring showing the real pixel color it should converge to.
     ctx.globalCompositeOperation = 'source-over';
     const [px, py] = ndcToPx(ms.tapNdc[0], ms.tapNdc[1]);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2.5;
+    const n = Math.max(1, ms.counted);
+    const avg = toDisplay([ms.sum[0] / n, ms.sum[1] / n, ms.sum[2] / n]);
     ctx.beginPath();
-    ctx.arc(px, py, 11, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.arc(px, py, 17, 0, Math.PI * 2);
+    ctx.fillStyle = `rgb(${avg[0]},${avg[1]},${avg[2]})`;
     ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = ms.pixelRef ? `rgb(${ms.pixelRef[0]},${ms.pixelRef[1]},${ms.pixelRef[2]})` : '#fff';
+    ctx.beginPath();
+    ctx.arc(px, py, 20, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(px, py, 24, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   // ---------- loop ----------
@@ -495,6 +512,11 @@ export function initPhoton(opts: {
           paths,
           outcomes: paths.map(classify),
           colors: paths.map((p) => pathColor(p, scene)),
+          tints: paths.map(buildTints),
+          pixelRef: (() => {
+            const px = opts.readPixel(ndcX, ndcY);
+            return px ? toDisplay(px) : null;
+          })(),
           tapNdc: [ndcX, ndcY],
           start: performance.now(),
           counted: 0,
