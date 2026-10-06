@@ -22,3 +22,10 @@ Review it with: `git show 4b5aa49`
 **Status 2026-10-06: COMPLETE: workflow green, site serves HTTP 200.**
 
 **CL: `628d265`**: deploy.yml unchanged; first run failed because Pages was not yet enabled, re-run after enabling succeeded. Project URL redirects to the account's custom domain (www.trungtuanle.com); the bare domain has a stray A record (not ours to fix in repo).
+
+## Scene, materials, bounces (RND-003, RND-004)
+
+**Status 2026-10-06: COMPLETE on desktop GPU; iPad/Intel Mac perf unmeasured.**
+
+**CL: `aa9aa52`**: `src/scene.ts` (scene state), shader now uniform-driven (3 spheres, light pos/size/color, bounce cap), 5 materials (diffuse, mirror, glass, rough metal, emissive). Dev hooks: `window.lightlab`, keys 0-8 bounces, q/w/e cycle material.
+Review it with: `git show aa9aa52`

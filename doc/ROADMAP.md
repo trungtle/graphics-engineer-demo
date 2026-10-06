@@ -50,7 +50,7 @@ in the roadmap.
 
 | Area | Doc | Active (todo) | Done | Notes |
 |------|-----|----------------|------|-------|
-| Renderer | [renderer.md](roadmap/renderer.md) | 7 | 0 | RND-001 spike renders in desktop browser; still needs iPad + Intel Mac numbers (float-buffer format pending) |
+| Renderer | [renderer.md](roadmap/renderer.md) | 5 | 2 | Scene/materials/bounces done (RND-003/004) on desktop GPU; RND-001 still needs iPad + Intel Mac numbers (float-buffer format pending) |
 | Interaction | [interaction.md](roadmap/interaction.md) | 6 | 0 | v1 = bounces/samples, materials/light, Be a photon; INT-S1 is stretch |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 6 | 0 | Clean/bright theme; each equation term has an accent color shared with its controls |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live at www.trungtuanle.com/graphics-engineer-demo/ (account custom domain redirect); offline PWA mandatory |

@@ -68,10 +68,10 @@ any uniform resets the counter to 0.
 
 <!--task
 id: RND-003
-status: todo
+status: done
 epic: core
 deps: [RND-002]
-cl:
+cl: aa9aa52
 -->
 ### RND-003 — Scene description + material set
 
@@ -84,10 +84,10 @@ glass shows refraction + caustic hint; mirror reflects the colored walls.
 
 <!--task
 id: RND-004
-status: todo
+status: done
 epic: core
 deps: [RND-003]
-cl:
+cl: aa9aa52
 -->
 ### RND-004 — Bounce limit uniform (0–8)
 
@@ -95,7 +95,9 @@ Bounce count is a uniform so the slider works without recompiling. Russian
 roulette only past the user-set cap's minimum of 3 so low-bounce views stay
 exact.
 
-Verify: before/after pair `img/rnd-004-bounces-1.png` / `-bounces-8.png`
+Result: verified in-browser (RTX 4070 Ti): 8 bounces shows red/green bleed, mirror reflects walls, emissive sphere glows. Screenshot files deferred to RND-007 capture mode.
+
+Verify (original): before/after pair `img/rnd-004-bounces-1.png` / `-bounces-8.png`
 showing red/green color bleeding on the floor and ceiling at 8 bounces.
 
 <!--task
