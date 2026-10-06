@@ -64,3 +64,10 @@ Review it with: `git show e675cc5`
 
 **CL: `1f297d4`**: `src/ui/photon.ts`, `cos` in cpu.ts PathSegment, toast duration param, photon button + overlay styles, 2 new tests (9 total). Key finding: ~6% of random paths reach the lamp; surfaced to students as the reason images start noisy.
 Review it with: `git show 1f297d4`
+
+## Lamp controls + orbit camera (INT-003, INT-005)
+
+**Status 2026-10-06: COMPLETE on desktop; real-finger iPad test pending.**
+
+**CL: `bb4b091`**: scene.ts (camera, light helpers, colors), cpu.ts (Camera, makeCamera, rayDir, ceilingPoint; all picking/projection now takes the camera), shader camera + light-radiance uniforms, main.ts pointer state machine (lamp drag / orbit / tap / double-tap), lamp swatches + size slider, compact layout media queries, 13 tests.
+Review it with: `git show bb4b091`

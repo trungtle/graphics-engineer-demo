@@ -7,6 +7,8 @@ large readable type from a couple of meters away. English only.
 
 ## Decisions
 
+- **Compact layout rules** (2026-10-06): the controls card must fit at all six reference viewports with the longest term explanation open. Achieved by: no tick row under sliders, one-line captions, 36px-wide swatches (48px tall), tighter spacing in short landscape (max-height 860) and short portrait (max-height 1100) via media queries, portrait split 52/48. Any new control must re-run the six-viewport overflow check.
+
 - **Layout** (2026-10-05): landscape = render left (~65%), panel right;
   portrait (iPad) = render top, panel below. Single screen, no scrolling, no
   routes.
@@ -77,7 +79,7 @@ When a control is used, its term pulses/glows in its accent color for ~2 s
 (mapping table in [interaction.md](interaction.md)). Photon mode highlights
 terms per bounce as the path animates (INT-004).
 
-Result: wired via `initControls({onTerm})` and `eq.highlight()`. Measured: slider lights L_i, Restart lights the integral, tapping an object lights f_r (L_e when it becomes glowing); all clear after 2.5 s (tap-selected terms after 9 s). Photon-mode per-bounce highlighting is done in INT-004; lamp controls will call highlight('le') in INT-003.
+Result: wired via `initControls({onTerm})` and `eq.highlight()`. Measured: slider lights L_i, Restart lights the integral, tapping an object lights f_r (L_e when it becomes glowing); all clear after 2.5 s (tap-selected terms after 9 s). Photon-mode per-bounce highlighting is done in INT-004; lamp controls call highlight('le') (done in INT-003).
 
 Verify (original): each control lights exactly its term; no term stays lit after 3 s of
 inactivity.

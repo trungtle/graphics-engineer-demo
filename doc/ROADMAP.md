@@ -51,7 +51,7 @@ in the roadmap.
 | Area | Doc | Active (todo) | Done | Notes |
 |------|-----|----------------|------|-------|
 | Renderer | [renderer.md](roadmap/renderer.md) | 4 | 3 | Scene/materials/bounces + CPU picker done (RND-003/004/006); cpu.ts must mirror shaders.ts on desktop GPU; RND-001 still needs iPad + Intel Mac numbers (float-buffer format pending) |
-| Interaction | [interaction.md](roadmap/interaction.md) | 3 | 3 | Bounces/samples, tap-to-change material, Be a photon done (INT-001/002/004); lamp controls (INT-003) and camera orbit (INT-005) remain; INT-S1 is stretch |
+| Interaction | [interaction.md](roadmap/interaction.md) | 1 | 5 | All v1 interactions done (INT-001..005); only stretch INT-S1 remains |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 3 | 3 | Layout, equation captions, live highlighting done (UI-001/002/003); idle mode, careers, presenter panel remain. Debug HUD only with ?debug |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live at www.trungtuanle.com/graphics-engineer-demo/ (account custom domain redirect); offline PWA mandatory |
 

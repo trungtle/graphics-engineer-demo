@@ -18,6 +18,9 @@ it, the panel lights up that term (see [ui.md](ui.md), UI-003).
 
 ## Decisions
 
+- **Lamp power is constant as it resizes** (2026-10-06): radiance scales with (0.3/half)^2, so a bigger lamp gives softer shadows without getting brighter. Size range 0.12-0.42 half-width; lamp always clamped fully on the ceiling.
+- **Camera is an orbit camera** (2026-10-06): yaw within +-0.5 rad, pitch -0.2..0.3, distance fixed. Shader gets camPos/right/up/fwd uniforms; cpu.ts `makeCamera` mirrors it. Orbit drag works on anything that is not the lamp; double-tap on the background resets (not in photon mode).
+
 - **Explanations never overlay the render** (2026-10-06): all captions (material names, photon steps, hints) go in the caption bar directly under the picture (`#explain`, fixed height so the render does not resize). Controls call `ui.toast(title, text, ms)`, which now writes there and reverts to a hint afterwards.
 
 - **Sandbox + hints, not a guided story** (2026-10-05): every control
@@ -69,10 +72,10 @@ it here).
 
 <!--task
 id: INT-003
-status: todo
+status: done
 epic: controls
 deps: [RND-006, UI-001]
-cl:
+cl: bb4b091
 -->
 ### INT-003 — Light controls: drag lamp, color, size
 
@@ -80,7 +83,9 @@ Drag the lamp along the ceiling with a finger; swatch row for color (warm
 white, cool white, red, blue, purple); size slider (small = hard shadows, big
 = soft shadows).
 
-Verify: before/after `img/int-003-small-light.png` / `-big-light.png` showing
+Result: lamp drag moves along the ceiling (grab offset kept, ceilingPoint ray-plane math), 5 color swatches, size slider (caption: small = sharp shadows, big = soft). All light `L_e`. Screenshot: [orbit + purple big lamp](img/int-003-orbit-purple-big-lamp.jpg). Shadow-softness before/after pair not captured (needs RND-007).
+
+Verify (original): before/after `img/int-003-small-light.png` / `-big-light.png` showing
 shadow softness change.
 
 <!--task
@@ -106,10 +111,10 @@ Verify (original, partly superseded): path endpoints land on the visible surface
 
 <!--task
 id: INT-005
-status: todo
+status: done
 epic: camera
 deps: [RND-002]
-cl:
+cl: bb4b091
 -->
 ### INT-005 — Camera orbit (drag on empty space) + reset
 
@@ -117,7 +122,9 @@ One-finger drag on the background orbits the camera within a limited arc
 (the Cornell box has an open front — keep the camera in front of it).
 Double-tap resets the view. Used by idle mode too (UI-004).
 
-Verify: cannot orbit to a view behind the walls; double-tap restores default.
+Result: orbit via drag, clamped, double-tap reset; 4 new tests (orbit consistency of pick/project, ceilingPoint inverse, lamp pick). Synthetic-event check: drag turns camera, huge drag clamps at limits, lamp drag does not move camera, tap on lamp does not move it, double-tap resets. Drag sensitivity 0.004 rad/px (125 px to the yaw limit).
+
+Verify (original): cannot orbit to a view behind the walls; double-tap restores default.
 
 <!--task
 id: INT-S1
