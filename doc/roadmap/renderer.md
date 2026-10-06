@@ -33,7 +33,7 @@ architecture changes (half-float, lower bounce cap, lower render scale).
 
 <!--task
 id: RND-001
-status: todo
+status: doing
 epic: spike
 deps: [OPS-001]
 cl:

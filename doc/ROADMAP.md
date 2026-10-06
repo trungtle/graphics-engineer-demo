@@ -50,17 +50,17 @@ in the roadmap.
 
 | Area | Doc | Active (todo) | Done | Notes |
 |------|-----|----------------|------|-------|
-| Renderer | [renderer.md](roadmap/renderer.md) | 7 | 0 | RND-001 iPad spike gates everything; float-buffer format pending its result |
+| Renderer | [renderer.md](roadmap/renderer.md) | 7 | 0 | RND-001 spike renders in desktop browser; still needs iPad + Intel Mac numbers (float-buffer format pending) |
 | Interaction | [interaction.md](roadmap/interaction.md) | 6 | 0 | v1 = bounces/samples, materials/light, Be a photon; INT-S1 is stretch |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 6 | 0 | Clean/bright theme; each equation term has an accent color shared with its controls |
-| Deploy & Booth | [deploy.md](roadmap/deploy.md) | 6 | 0 | Offline PWA is mandatory; git push only on explicit request |
+| Deploy & Booth | [deploy.md](roadmap/deploy.md) | 5 | 1 | OPS-001 done; Pages workflow written (OPS-002) but unverified until first push; offline PWA mandatory |
 
 Completed history: [completed.md](roadmap/completed.md)
 
 ## Next actionable
 
-**OPS-001 — Scaffold Vite + TypeScript project**, then OPS-002 (Pages
-workflow) and **RND-001 (iPad spike)**. The spike is the single biggest risk:
+**RND-001 (iPad spike)**: push so Pages deploys (OPS-002), open the URL on the
+iPad and Intel MacBook, and record the HUD numbers in renderer.md. The spike is the single biggest risk:
 if iPad Safari can't render to float targets or the shader is too slow on an
 Iris iGPU, renderer decisions change before any UI is built on top.
 

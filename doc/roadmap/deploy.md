@@ -23,10 +23,10 @@ on-site hardening pass for the career fair. The repo is
 
 <!--task
 id: OPS-001
-status: todo
+status: done
 epic: scaffold
 deps: []
-cl:
+cl: 4b5aa49
 -->
 ### OPS-001 — Scaffold Vite + TypeScript project
 
@@ -38,7 +38,7 @@ Verify: `npm run build` succeeds; `npm run dev` shows a page.
 
 <!--task
 id: OPS-002
-status: todo
+status: doing
 epic: deploy
 deps: [OPS-001]
 cl:
