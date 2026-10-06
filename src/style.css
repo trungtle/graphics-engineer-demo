@@ -194,14 +194,50 @@ h2 {
 
 #careers {
   grid-area: careers;
-  min-height: var(--tap);
+  height: calc(var(--tap) + var(--s-3));
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: var(--s-3) var(--s-5);
+  padding: 0 var(--s-5);
   color: var(--muted);
   font-size: var(--fs-small);
+  overflow: hidden;
 }
+.careers-label { flex: none; font-weight: 650; color: var(--muted); }
+.careers-chips { flex: none; display: flex; gap: var(--s-1); }
+.chip {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--cc);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.25s, color 0.25s;
+}
+.chip svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.chip.on { background: var(--cc); color: #fff; }
+.careers-text {
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--ink);
+  font-weight: 650;
+  line-height: 1.25;
+  border-left: 4px solid var(--cc, var(--line));
+  padding-left: var(--s-3);
+}
+.careers-text.swap { animation: careers-in 0.4s ease; }
+@keyframes careers-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (max-width: 900px) { .careers-label { display: none; } }
 
 /* ---- controls ---- */
 #controls { display: flex; flex-direction: column; gap: var(--s-3); }

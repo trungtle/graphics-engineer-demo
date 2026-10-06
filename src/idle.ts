@@ -185,6 +185,10 @@ export function initIdle(opts: {
       await wait(4500);
       say(`Your laptop just traced ${formatCount(opts.totalRays() - raysAtStart)} rays`);
       await wait(4500);
+      say('Graphics programmers build this for games, movies, AR and VR, cars and medicine');
+      await wait(4500);
+      say("The math you're learning now is the job");
+      await wait(4500);
       say('Tap to play');
       await wait(4500);
     }

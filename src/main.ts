@@ -15,11 +15,12 @@ import { initControls, MATERIAL_BLURB } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
+import { initCareers } from './ui/careers';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
 const params = new URLSearchParams(location.search);
-// The readout is a dev/device-test aid: show it with ?debug (later: presenter panel, UI-006).
+// The readout is a dev/device-test aid: show it with ?debug .
 hud.hidden = !params.has('debug');
 const glOrNull = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true });
 if (!glOrNull) {
@@ -183,6 +184,7 @@ const reset = () => {
   frame = 0;
   photon?.clear();
 };
+initCareers();
 const eq = initEquation();
 const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t) });
 photon = initPhoton({
