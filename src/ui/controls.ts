@@ -1,21 +1,5 @@
-import { clampLight, LIGHT_COLORS, LIGHT_MAX_HALF, LIGHT_MIN_HALF, type MaterialId, type SceneState } from '../scene';
+import { clampLight, LIGHT_COLORS, LIGHT_MAX_HALF, LIGHT_MIN_HALF, type SceneState } from '../scene';
 import type { Term } from './equation';
-
-export const MATERIAL_BLURB: Record<MaterialId, { name: string; text: string }> = {
-  0: { name: 'Matte', text: 'light scatters every which way' },
-  1: { name: 'Mirror', text: 'light bounces off perfectly' },
-  2: { name: 'Glass', text: 'light bends as it passes through' },
-  3: { name: 'Metal', text: 'a blurry, shiny reflection' },
-  4: { name: 'Glowing', text: 'this one makes its own light' },
-};
-
-const BOUNCE_CAPTION = (n: number): string =>
-  n === 0 ? 'Only the lamp: no bounces yet' : n === 1 ? 'Direct light only' : 'Light bounces: walls tint each other';
-
-const HINT = {
-  title: 'Try it',
-  text: 'Tap a ball to change what it is made of, drag the slider to change bounces, or press Be a photon.',
-};
 
 export function formatCount(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 0 : 1)} billion`;
@@ -50,10 +34,9 @@ export function initControls(opts: {
     <div class="ctl-block">
       <div class="ctl-head"><span class="ctl-title t-li">Light bounces</span><span class="ctl-val t-li" id="bval"></span></div>
       <input id="bounces" class="slider" type="range" min="0" max="8" step="1" aria-label="Light bounces" />
-      <p class="cap" id="bcap"></p>
     </div>
     <div class="ctl-block lamp">
-      <div class="ctl-head"><span class="ctl-title t-le">Lamp</span><span class="ctl-hint" id="lcap"></span></div>
+      <div class="ctl-head"><span class="ctl-title t-le">Lamp</span></div>
       <div class="lamp-row">
         <div class="swatches" role="radiogroup" aria-label="Lamp color">
           ${LIGHT_COLORS.map((c, i) => `<button class="swatch" type="button" role="radio" data-i="${i}" aria-label="${c.name}" style="--sw:${c.swatch}"></button>`).join('')}
@@ -64,14 +47,12 @@ export function initControls(opts: {
 
   const slider = root.querySelector<HTMLInputElement>('#bounces')!;
   const bval = root.querySelector<HTMLElement>('#bval')!;
-  const bcap = root.querySelector<HTMLElement>('#bcap')!;
   const sppEl = root.querySelector<HTMLElement>('#spp')!;
   const raysEl = root.querySelector<HTMLElement>('#rays')!;
 
   const syncBounces = () => {
     slider.value = String(opts.scene.bounces);
     bval.textContent = String(opts.scene.bounces);
-    bcap.textContent = BOUNCE_CAPTION(opts.scene.bounces);
     slider.style.setProperty('--fill', `${(opts.scene.bounces / 8) * 100}%`);
   };
   slider.addEventListener('input', () => {
@@ -87,14 +68,12 @@ export function initControls(opts: {
   syncBounces();
 
   const lsize = root.querySelector<HTMLInputElement>('#lampsize')!;
-  const lcap = root.querySelector<HTMLElement>('#lcap')!;
   const swatches = Array.from(root.querySelectorAll<HTMLButtonElement>('.swatch'));
   const syncLamp = () => {
     const l = opts.scene.light;
     lsize.value = String(Math.round(l.half * 100));
     const frac = (l.half - LIGHT_MIN_HALF) / (LIGHT_MAX_HALF - LIGHT_MIN_HALF);
     lsize.style.setProperty('--fill', `${frac * 100}%`);
-    lcap.textContent = frac < 0.25 ? 'Small: sharp shadows' : frac > 0.7 ? 'Big: soft shadows' : 'Drag it in the picture';
     swatches.forEach((b, i) => {
       const c = LIGHT_COLORS[i].rgb;
       const on = c[0] === l.color[0] && c[1] === l.color[1] && c[2] === l.color[2];
@@ -125,7 +104,7 @@ export function initControls(opts: {
   const setHint = () => {
     if (isIdle()) return;
     explainEl.classList.remove('show');
-    explainEl.innerHTML = `<strong>${HINT.title}</strong> <span>${HINT.text}</span>`;
+    explainEl.innerHTML = '';
   };
   setHint();
   let toastTimer = 0;

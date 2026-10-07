@@ -11,11 +11,10 @@ import {
   type MaterialId,
 } from './scene';
 import { cameraLookAlong, cameraOf, ceilingPoint, pick, type Camera } from './render/cpu';
-import { initControls, MATERIAL_BLURB } from './ui/controls';
+import { initControls } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
-import { initCareers } from './ui/careers';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -184,7 +183,6 @@ const reset = () => {
   frame = 0;
   photon?.clear();
 };
-initCareers();
 const eq = initEquation();
 const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t) });
 photon = initPhoton({
@@ -200,8 +198,6 @@ photon = initPhoton({
 function cycleMaterial(i: number) {
   const o = scene.objects[i];
   o.mat = ((o.mat + 1) % MATERIALS.length) as MaterialId;
-  const b = MATERIAL_BLURB[o.mat];
-  ui.toast(b.name, b.text);
   eq.highlight(o.mat === 4 ? 'le' : 'fr');
   reset();
 }
@@ -240,7 +236,6 @@ function ndcOf(e: PointerEvent): { nx: number; ny: number; aspect: number } {
 function resetView() {
   scene.camera.yaw = 0;
   scene.camera.pitch = 0;
-  ui.toast('View reset', 'Back to straight on', 1800);
   reset();
 }
 
@@ -318,7 +313,6 @@ canvas.addEventListener('pointerup', (e) => {
     return;
   }
   if (h?.surface === 'light') {
-    ui.toast('The lamp', 'Drag it around the ceiling, or change its color and size', 3500);
     eq.highlight('le');
     lastTap = null;
     return;

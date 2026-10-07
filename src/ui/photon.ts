@@ -473,7 +473,6 @@ export function initPhoton(opts: {
     btn.textContent = v ? 'Photon mode: tap the picture' : 'Be a photon';
     stage.classList.toggle('photon-mode', v);
     clear();
-    if (v) opts.toast('Photon mode', 'Tap anywhere to send a photon into the scene', 4000);
   }
 
   btn.addEventListener('click', () => setEnabled(!on));
@@ -482,11 +481,6 @@ export function initPhoton(opts: {
     manyBtn.setAttribute('aria-pressed', String(manyMode));
     manyBtn.classList.toggle('on', manyMode);
     stop();
-    opts.toast(
-      manyMode ? 'All samples' : 'One photon',
-      manyMode ? `Tap a pixel: all ${SAMPLES} of its sample paths get traced and averaged` : 'Tap anywhere to send one photon',
-      4000,
-    );
   });
   fpBtn.addEventListener('click', () => {
     fpOn = !fpOn;
@@ -539,7 +533,6 @@ export function initPhoton(opts: {
       tally.sent++;
       resultShown = false;
       start = performance.now();
-      opts.toast('Photon on its way', '', segs.length * SEG_MS + 400);
       raf = requestAnimationFrame(frame);
     },
     pose(now) {
