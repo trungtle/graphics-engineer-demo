@@ -18,6 +18,8 @@ it, the panel lights up that term (see [ui.md](ui.md), UI-003).
 
 ## Decisions
 
+- **Instructional toasts removed** (2026-10-06, user: presenter explains onsite): no text on material taps, lamp taps, view reset or photon-mode toggles; only photon and all-samples results appear in the caption bar. See ui.md.
+
 - **Photon mode presentation** (2026-10-06, user feedback): the render is dimmed (display-shader exposure 0.22, eased in/out, so it costs nothing) so the photon reads as a glowing light; the photon and trail are additive glows tinted by the lamp color and the surfaces hit, and each hit lights up its spot. Pace is 0.75 s travel + 0.3 s dwell per segment (constants at the top of `src/ui/photon.ts`). No per-bounce text: the caption bar shows only 'Photon on its way' during flight and, at the end, 'Hit light' / 'Hit object' / 'Miss', the color this photon brings back and the pixel's color in the picture (3x3 average read from the float accumulation buffer, not the dimmed canvas), plus the found-the-lamp tally. 'Hit object' also covers running out of bounces on a surface.
 
 - **Lamp power is constant as it resizes** (2026-10-06): radiance scales with (0.3/half)^2, so a bigger lamp gives softer shadows without getting brighter. Size range 0.12-0.42 half-width; lamp always clamped fully on the ceiling.

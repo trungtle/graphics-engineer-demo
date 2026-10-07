@@ -19,7 +19,7 @@ next actionable tasks (todo tasks whose deps are all done).
 | 0 — Spike | Prove a WebGL2 path tracer runs well on iPad + Intel Mac | OPS-001, OPS-002, RND-001 |
 | 1 — Core renderer | Accumulation, materials, bounces, adaptive scale, picking, capture | RND-002..007 |
 | 2 — Interactions | Bounces/samples, materials, light, photon mode, camera | INT-001..005 |
-| 3 — Equation & idle | Layout, live equation, idle mode, careers (presenter panel dropped) | UI-001..005 |
+| 3 — Equation & idle | Layout, live equation, idle mode (careers strip removed, presenter panel dropped) | UI-001..004 |
 | 4 — Ship | PWA/offline | OPS-003 |
 | 5 — Booth hardening | Robustness, device soak test, setup checklist | BOOTH-001..003 |
 | Stretch | Match-the-target game | INT-S1 |
@@ -52,7 +52,7 @@ in the roadmap.
 |------|-----|----------------|------|-------|
 | Renderer | [renderer.md](roadmap/renderer.md) | 4 | 3 | Scene/materials/bounces + CPU picker done (RND-003/004/006); cpu.ts must mirror shaders.ts on desktop GPU; RND-001 still needs iPad + Intel Mac numbers (float-buffer format pending) |
 | Interaction | [interaction.md](roadmap/interaction.md) | 1 | 7 | All v1 interactions done (INT-001..007, incl. All-samples view and photon first-person view); only stretch INT-S1 remains |
-| UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); presenter panel UI-006 dropped by user. Debug HUD only with ?debug |
+| UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); careers strip (UI-005) later removed and presenter panel (UI-006) dropped by user: no explanatory text, presenter explains onsite. Debug HUD only with ?debug |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live on GitHub Pages (project URL redirects to the account's custom domain); offline PWA mandatory |
 
 Completed history: [completed.md](roadmap/completed.md)

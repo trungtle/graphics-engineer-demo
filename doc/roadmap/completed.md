@@ -99,3 +99,10 @@ Review it with: `git show 9cec387`
 
 **CL: `ce8ed8b`**: `src/ui/careers.ts`, strip styles, idle captions; UI-006 (presenter panel) removed from the roadmap at the user's request.
 Review it with: `git show ce8ed8b`
+
+## Text removal (user request)
+
+**Status 2026-10-06: COMPLETE.**
+
+**CL: `5fdee61`**: deleted careers.ts and the strip, tagline, equation caption (equation.ts now highlight-only), slider captions, lamp hint, default and descriptive toasts; layout grids lose the careers row. 24 tests pass; six viewports re-measured clean.
+Review it with: `git show 5fdee61`
