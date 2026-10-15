@@ -61,16 +61,18 @@ Verify (original): dragging the slider changes the look at each stop; six-viewpo
 
 <!--task
 id: STN-004
-status: todo
+status: done
 epic: budget
 deps: [STN-002]
-cl:
+cl: 884e825
 -->
 ### STN-004 — The 16 ms challenge
 
 Feature cards (lighting, shadows, reflections, ambient occlusion, global illumination, anti-aliasing) with modeled millisecond costs, a budget bar against 16.6 ms (60 fps), and a fps readout. Turning features on makes the picture prettier (a visible score); going over budget makes the picture stutter at the implied frame rate. Goal: the prettiest frame that still fits.
 
-Verify: cost table unit-tested (sum, over-budget flag, best-possible score); stutter visibly starts above budget; six-viewport overflow check.
+Result: `src/budget.ts` (pure rules, 9 tests: costs, dependencies, ray-traced lighting replacing the raster tricks, vsync snapping to 60/30/20 fps, brute-force best score per tier) + `src/ui/budget.ts` + `#st-budget`. Cost table (ms on Today's console, base 3.0): lighting 2, shine 1 (needs lighting), shadows 3.5 (needs lighting), reflections 4, ambient occlusion 2.5, smooth edges 1.5, ray-traced lighting 16 (replaces the rest). Console tiers Old x1.8, Today x1, Future x0.5. Points: 10/5/15/15/10/10, ray-traced 75. Designed outcome (verified): Today: not everything fits, the best is 60 points at 16.5 ms (everything except shine) and adding shine drops to 30 fps; Future: ray-traced lighting fits at 9.5 ms for 75; Old: even ray tracing alone is 34 ms (20 fps). UI: ms readout + budget bar with the 16.7 ms mark, fps pill (red when over), effect cards with live costs, tier selector, prettiness vs best (star when you hit the best at 60 fps), motion-test ball that only updates at the console's frame rate. Stutter is shown in the motion test, not the main picture, so ray-traced noise is not mistaken for judder. Layout: 3-column cards in portrait, tighter spacing on short landscape; no overflow at the five measured viewports. Screenshot: [over budget](img/stn-004-16ms-over-budget.jpg).
+
+Verify (original): cost table unit-tested (sum, over-budget flag, best-possible score); stutter visibly starts above budget; six-viewport overflow check.
 
 <!--task
 id: STN-005

@@ -127,3 +127,10 @@ Review it with: `git show dc68f11`
 
 **CL: `b0f39f5`**: decades.ts, #st-decades, shared stage/panel classes, photon controls hidden outside Light Lab, compact portrait layout.
 Review it with: `git show b0f39f5`
+
+## 16 ms challenge (STN-004)
+
+**Status 2026-10-15: COMPLETE on desktop; real-finger iPad test pending.**
+
+**CL: `884e825`**: budget.ts + tests (36 total), ui/budget.ts, #st-budget, portrait/short-landscape layout rules.
+Review it with: `git show 884e825`
