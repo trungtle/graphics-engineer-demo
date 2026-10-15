@@ -22,6 +22,7 @@ next actionable tasks (todo tasks whose deps are all done).
 | 3 — Equation & idle | Layout, live equation, idle mode (careers strip removed, presenter panel dropped) | UI-001..004 |
 | 4 — Ship | PWA/offline | OPS-003 |
 | 5 — Booth hardening | Robustness, device soak test, setup checklist | BOOTH-001..003 |
+| 6 — Stations | Tab bar + Decades slider, 16 ms challenge, Mirrors puzzle | STN-001..007 |
 | Stretch | Match-the-target game | INT-S1 |
 
 ## Task block schema
@@ -54,6 +55,7 @@ in the roadmap.
 | Interaction | [interaction.md](roadmap/interaction.md) | 1 | 7 | All v1 interactions done (INT-001..007, incl. All-samples view and photon first-person view); only stretch INT-S1 remains |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); careers strip (UI-005) later removed and presenter panel (UI-006) dropped by user: no explanatory text, presenter explains onsite. Debug HUD only with ?debug |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live on GitHub Pages (project URL redirects to the account's custom domain); offline PWA mandatory |
+| Stations | [stations.md](roadmap/stations.md) | 7 | 0 | Chosen 2026-10-15: shell + tab bar first; Decades and 16 ms share a feature-flag shader; Mirrors is a separate 2D canvas; attract mode stays Light Lab only |
 
 Completed history: [completed.md](roadmap/completed.md)
 
