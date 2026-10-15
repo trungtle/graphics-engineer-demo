@@ -76,16 +76,16 @@ Verify (original): cost table unit-tested (sum, over-budget flag, best-possible 
 
 <!--task
 id: STN-005
-status: todo
+status: done
 epic: mirrors
 deps: []
-cl:
+cl: 2eba7a4
 -->
 ### STN-005 — Optics engine (pure 2D)
 
 Pure functions, no DOM: ray vs mirror segment (law of reflection), ray vs glass block or prism (Snell's law, total internal reflection), ray vs target, bounded bounce count, light path output as polylines. Fully unit-tested.
 
-Verify: tests for reflection angle, refraction angle and critical angle, a path that hits the target, a path that escapes.
+Result: `src/optics.ts` (reflect, refract with total internal reflection, criticalAngle, glass(polygon, auto counter-clockwise), traceBeam over mirrors, blockers, glass polygons and circular targets with a segment limit) + 11 tests (47 total): reflection angle, Snell's law through a slab and parallel exit, TIR beyond 41.8 degrees, a right-angle prism turning a beam 90 degrees, clockwise glass reordered, bounds/blocker/segment-limit endings, blocked target. Verify (original): tests for reflection angle, refraction angle and critical angle, a path that hits the target, a path that escapes.
 
 <!--task
 id: STN-006

@@ -134,3 +134,10 @@ Review it with: `git show b0f39f5`
 
 **CL: `884e825`**: budget.ts + tests (36 total), ui/budget.ts, #st-budget, portrait/short-landscape layout rules.
 Review it with: `git show 884e825`
+
+## Optics engine (STN-005)
+
+**Status 2026-10-15: COMPLETE.**
+
+**CL: `2eba7a4`**: optics.ts + 11 tests.
+Review it with: `git show 2eba7a4`
