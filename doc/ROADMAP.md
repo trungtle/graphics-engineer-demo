@@ -25,6 +25,7 @@ next actionable tasks (todo tasks whose deps are all done).
 | 4 — Ship | PWA/offline | OPS-003 |
 | 5 — Booth hardening | Robustness, device soak test, setup checklist | BOOTH-001..003 |
 | 6 — Stations | Tab bar + Decades slider, 16 ms challenge, Mirrors puzzle | STN-001..007 |
+| 7 — Meshes | Stanford bunny and dragon in Light Lab and Decades (needs adaptive render scale) | MSH-001..005 |
 | Stretch | Match-the-target game | INT-S1 |
 
 ## Task block schema
@@ -58,6 +59,7 @@ in the roadmap.
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); careers strip (UI-005) later removed and presenter panel (UI-006) dropped by user: no explanatory text, presenter explains onsite. Debug HUD only with ?debug |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live on GitHub Pages (project URL redirects to the account's custom domain); offline PWA mandatory |
 | Stations | [stations.md](roadmap/stations.md) | 0 | 7 | Chosen 2026-10-15: shell + tab bar (STN-001) feature shading/era presets (STN-002) Decades (STN-003), 16 ms challenge (STN-004) optics engine (STN-005), Mirrors puzzle (STN-006) and cross-station pass (STN-007) done: all of Phase 6 built; Decades and 16 ms share a feature-flag shader; Mirrors is a separate 2D canvas; attract mode stays Light Lab only |
+| Meshes | [mesh.md](roadmap/mesh.md) | 5 | 0 | Requested 2026-10-16; plan only. Needs the user's OK to download the Stanford files; needs RND-005 before it can ship |
 
 Completed history: [completed.md](roadmap/completed.md)
 
