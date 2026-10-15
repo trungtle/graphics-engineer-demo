@@ -1,6 +1,6 @@
 import { glass, traceBeam, type Bounds, type Element, type Vec2 } from './optics';
 
-/** A piece the player can move and turn. `pos` is the center of a mirror and the right-angle corner of a prism. */
+/** A piece on the board. `pos` is the center of a mirror and the right-angle corner of a prism. */
 export interface PieceDef {
   kind: 'mirror' | 'prism';
   pos: Vec2;
@@ -8,6 +8,8 @@ export interface PieceDef {
   angle: number;
   /** mirror length, or prism leg length */
   size: number;
+  /** locked in place: part of the puzzle, not something the player moves */
+  fixed?: boolean;
 }
 
 export interface Level {
@@ -17,7 +19,7 @@ export interface Level {
   blockers: { a: Vec2; b: Vec2 }[];
   /** where the pieces start */
   pieces: PieceDef[];
-  /** one winning placement per piece (position and angle), used to check the level can be solved */
+  /** one winning placement per piece (position and angle); fixed pieces just repeat where they are */
   solution: { pos: Vec2; angle: number }[];
 }
 
@@ -26,16 +28,40 @@ export const SNAP_ANGLE = (15 * Math.PI) / 180;
 const deg = (d: number) => (d * Math.PI) / 180;
 
 const mirror = (x: number, y: number, a = 0): PieceDef => ({ kind: 'mirror', pos: [x, y], angle: deg(a), size: 14 });
-const prism = (x: number, y: number, a = 0): PieceDef => ({ kind: 'prism', pos: [x, y], angle: deg(a), size: 18 });
+const prism = (x: number, y: number, a = 0, fixed = false): PieceDef => ({
+  kind: 'prism',
+  pos: [x, y],
+  angle: deg(a),
+  size: 18,
+  ...(fixed ? { fixed: true } : {}),
+});
 
+/**
+ * Easy to hard. Level 1 already has both kinds of piece: the glass prism is locked in place so the player can
+ * see what it does (it turns the beam), and only the mirror moves.
+ */
 export const LEVELS: Level[] = [
   {
-    name: 'Bounce',
-    laser: { pos: [6, 30], angle: 0 },
-    targets: [{ pos: [40, 52], r: 3.5 }],
+    name: 'Meet the pieces',
+    laser: { pos: [6, 45], angle: 0 },
+    targets: [{ pos: [70, 15], r: 3.5 }],
     blockers: [],
-    pieces: [mirror(20, 48)],
-    solution: [{ pos: [40, 30], angle: deg(45) }],
+    pieces: [prism(34, 35, 0, true), mirror(60, 48)],
+    solution: [
+      { pos: [34, 35], angle: 0 },
+      { pos: [42, 15], angle: deg(-45) },
+    ],
+  },
+  {
+    name: 'Glass and mirror',
+    laser: { pos: [6, 50], angle: 0 },
+    targets: [{ pos: [70, 15], r: 3.5 }],
+    blockers: [{ a: [58, 60], b: [58, 24] }],
+    pieces: [prism(20, 10, 90), mirror(30, 55)],
+    solution: [
+      { pos: [34, 40], angle: 0 },
+      { pos: [42, 15], angle: deg(-45) },
+    ],
   },
   {
     name: 'Two turns',
@@ -61,32 +87,36 @@ export const LEVELS: Level[] = [
     ],
   },
   {
-    name: 'Glass corner',
+    name: 'Prism relay',
     laser: { pos: [6, 45], angle: 0 },
-    targets: [{ pos: [42, 12], r: 3.5 }],
+    targets: [{ pos: [70, 18], r: 3.5 }],
     blockers: [],
-    pieces: [prism(20, 15, 90)],
-    solution: [{ pos: [34, 35], angle: 0 }],
+    pieces: [prism(15, 15, 90), prism(62, 40, 270)],
+    solution: [
+      { pos: [34, 35], angle: 0 },
+      { pos: [50, 28], angle: deg(180) },
+    ],
   },
   {
-    name: 'Glass and mirror',
-    laser: { pos: [6, 50], angle: 0 },
-    targets: [{ pos: [70, 15], r: 3.5 }],
-    blockers: [{ a: [58, 60], b: [58, 24] }],
-    pieces: [prism(20, 10, 90), mirror(30, 55)],
+    name: 'Zigzag',
+    laser: { pos: [6, 10], angle: 0 },
+    targets: [{ pos: [70, 10], r: 3.5 }],
+    blockers: [
+      { a: [25, 0], b: [25, 38] },
+      { a: [52, 60], b: [52, 22] },
+    ],
+    pieces: [mirror(15, 30), mirror(35, 35), mirror(45, 45), mirror(60, 30)],
     solution: [
-      { pos: [34, 40], angle: 0 },
-      { pos: [42, 15], angle: deg(-45) },
+      { pos: [15, 10], angle: deg(45) },
+      { pos: [15, 50], angle: deg(45) },
+      { pos: [40, 50], angle: deg(-45) },
+      { pos: [40, 10], angle: deg(-45) },
     ],
   },
 ];
 
-/** Three slightly different bend strengths per beam, so glass spreads white light into a rainbow. */
-export const BEAMS: { ior: number; color: [number, number, number] }[] = [
-  { ior: 1.5, color: [255, 70, 70] },
-  { ior: 1.52, color: [70, 255, 70] },
-  { ior: 1.54, color: [70, 90, 255] },
-];
+/** One bright beam (a single laser color keeps it easy to tell from the silver mirrors and the red-and-white target). */
+export const BEAMS: { ior: number; color: [number, number, number] }[] = [{ ior: 1.5, color: [255, 214, 102] }];
 
 /** The optical elements for a piece. */
 export function pieceElements(p: PieceDef): Element[] {

@@ -568,6 +568,6 @@ body.idle #explain strong { color: var(--ink); }
 .lvl-dots i.cur { border-color: var(--ink); }
 .lvl-dots i.done { background: #16a34a; border-color: #16a34a; }
 .lvl-actions { display: flex; gap: var(--s-2); }
-.lvl-actions .btn { flex: 1; margin-left: 0; }
+.lvl-actions .btn { flex: 1; margin-left: 0; padding: 0 var(--s-3); }
 .btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
 .btn:disabled { opacity: 0.35; cursor: default; }

@@ -10,11 +10,14 @@ export interface Station {
   viewportSlot?: HTMLElement;
   onEnter?: () => void;
   onLeave?: () => void;
+  /** back to a fresh start (called for every station when attract mode begins) */
+  onReset?: () => void;
 }
 
 export interface Stations {
   register(s: Station): void;
   show(id: string): void;
+  resetAll(): void;
   readonly current: string | null;
   ids(): string[];
 }
@@ -63,6 +66,9 @@ export function createStations(opts: { viewport: HTMLElement; tabs: HTMLElement 
       renderTabs();
     },
     show,
+    resetAll() {
+      for (const s of list) s.onReset?.();
+    },
     get current() {
       return current?.id ?? null;
     },

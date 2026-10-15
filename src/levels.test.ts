@@ -2,8 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { ARENA, LEVELS, evaluate, pieceElements, snapAngle, solved } from './levels';
 
 describe('levels', () => {
-  it('has five levels', () => {
-    expect(LEVELS).toHaveLength(5);
+  it('has six levels', () => {
+    expect(LEVELS).toHaveLength(6);
+  });
+
+  it('level 1 already has both a mirror and a prism, with the prism locked so the player sees what it does', () => {
+    const kinds = LEVELS[0].pieces.map((p) => p.kind).sort();
+    expect(kinds).toEqual(['mirror', 'prism']);
+    expect(LEVELS[0].pieces.find((p) => p.kind === 'prism')!.fixed).toBe(true);
+    expect(LEVELS[0].pieces.find((p) => p.kind === 'mirror')!.fixed).toBeUndefined();
+  });
+
+  it('locked pieces stay exactly where they start in the solution', () => {
+    for (const level of LEVELS) {
+      level.pieces.forEach((p, i) => {
+        if (!p.fixed) return;
+        expect(level.solution[i].pos).toEqual(p.pos);
+        expect(level.solution[i].angle).toBeCloseTo(p.angle, 9);
+      });
+    }
+  });
+
+  it('prisms and mirrors ramp up: the later levels use more pieces than the first', () => {
+    expect(LEVELS[LEVELS.length - 1].pieces.length).toBeGreaterThan(LEVELS[0].pieces.length);
+    expect(LEVELS.some((l) => l.pieces.filter((p) => p.kind === 'prism').length >= 2)).toBe(true);
   });
 
   it.each(LEVELS.map((l, i) => [i + 1, l] as const))('level %i is not solved at the start', (_n, level) => {
@@ -40,16 +62,18 @@ describe('levels', () => {
   });
 
   it('turning a mirror changes where the beam goes', () => {
-    const level = LEVELS[0];
+    const level = LEVELS[2];
     const a = evaluate(level, solved(level));
-    const b = evaluate(level, [{ ...solved(level)[0], angle: 0 }]);
+    const b = evaluate(level, [{ ...solved(level)[0], angle: 0 }, solved(level)[1]]);
     expect(a.won).toBe(true);
     expect(b.won).toBe(false);
   });
 
   it('a prism is made of one piece of glass, a mirror of one segment', () => {
-    expect(pieceElements(LEVELS[3].pieces[0])).toHaveLength(1);
-    expect(pieceElements(LEVELS[3].pieces[0])[0].kind).toBe('glass');
-    expect(pieceElements(LEVELS[0].pieces[0])[0].kind).toBe('mirror');
+    const prismPiece = LEVELS[0].pieces.find((p) => p.kind === 'prism')!;
+    const mirrorPiece = LEVELS[0].pieces.find((p) => p.kind === 'mirror')!;
+    expect(pieceElements(prismPiece)).toHaveLength(1);
+    expect(pieceElements(prismPiece)[0].kind).toBe('glass');
+    expect(pieceElements(mirrorPiece)[0].kind).toBe('mirror');
   });
 });

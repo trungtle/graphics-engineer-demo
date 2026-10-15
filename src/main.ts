@@ -409,10 +409,14 @@ stations.register({
   root: document.getElementById('st-mirrors')!,
   onEnter: mirrors.onEnter,
   onLeave: mirrors.onLeave,
+  onReset: mirrors.reset,
 });
 
 const idle = initIdle({
-  onStart: () => stations.show('light'),
+  onStart: () => {
+    stations.resetAll();
+    stations.show('light');
+  },
   scene,
   reset,
   ui,
