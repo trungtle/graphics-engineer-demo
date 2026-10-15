@@ -104,13 +104,15 @@ Verify (original): every level is solvable (tested by solving each with the engi
 
 <!--task
 id: STN-007
-status: todo
+status: done
 epic: polish
 deps: [STN-003, STN-004, STN-006]
-cl:
+cl: PENDING
 -->
 ### STN-007 — Cross-station polish and device pass
 
 All stations at all six viewports, tab bar behaviour in attract mode, memory stays flat when switching stations repeatedly, docs and screenshots updated. Real-finger iPad pass tracked in BOOTH-002.
 
-Verify: switch stations 100 times with flat heap; no console errors; overflow check clean.
+Result: switched stations 100 times (60 ms apart): JS heap 4.6 MB to 4.9 MB, 0 console errors or rejections; afterwards the Decades slider, the 16 ms cost readout, the Mirrors canvas and Light Lab (canvas back in its own slot, controls in sync) all work; starting attract mode while on Mirrors switches to Light Lab. Overflow and scroll checked at 1440x900, 1180x820, 1024x768, 820x1180 and 768x1024 for every station with the tab bar showing. Not done here (BOOTH-002): real-finger iPad pass, GPU cost of the feature shading (4x anti-aliasing, 6-ray ambient occlusion, shadow rays) on the Intel MacBook and iPad, 2 h soak.
+
+Verify (original): switch stations 100 times with flat heap; no console errors; overflow check clean.

@@ -1,11 +1,13 @@
 # Light Lab — Roadmap
 
-An interactive, single-screen web app for high-school students at a career
-fair: a live WebGL2 path tracer (Cornell box) that students poke at with touch
-controls while the **rendering equation** beside it lights up the term they're
-affecting. Idle/attract mode catches passers-by. Hosted on GitHub Pages,
-works offline. Targets: Intel MacBook + iPad. Booth is staffed (presenter
-narrates); clean, bright visual style; English.
+An interactive web app for high-school students at a career fair, with four
+stations on one tab bar: **Light Lab** (a live WebGL2 path tracer, the rendering
+equation lighting up beside it, photon mode, attract mode), **Decades** (the same
+scene from flat 1993 colors to path-traced global illumination), **16 ms** (spend
+a frame-time budget on effects) and **Mirrors** (a 2D laser puzzle). Hosted on
+GitHub Pages, works offline (planned, OPS-003). Targets: Intel MacBook + iPad.
+Booth is staffed (presenter narrates); clean, bright visual style; English; no
+explanatory text on screen, only readouts.
 
 This is the roadmap index. Tasks do not live in this file — each is a structured
 `<!--task ... -->` block living in one of the linked area docs under `roadmap/`.

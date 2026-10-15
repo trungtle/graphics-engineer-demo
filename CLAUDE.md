@@ -17,6 +17,10 @@ GitHub Pages, offline-capable PWA. Targets: Intel MacBook + iPad (touch-first).
 - Feature branches merge with `git merge --no-ff`. Review a merge with
   `git log <merge>^1..<merge>^2 --oneline` and `git diff <merge>^1 <merge>^2`.
 
+## Stations
+
+Four screens switched by a bottom tab bar (`src/stations.ts`): Light Lab (the original path-tracer demo, default), Decades, 16 ms (`src/budget.ts`, `src/ui/budget.ts`), Mirrors (`src/optics.ts`, `src/levels.ts`, `src/ui/mirrors.ts`, a 2D canvas, no GL). They share **one GL canvas**: `#viewport` is moved into the active station's `.viewport-slot`; the render loop skips frames while it is hidden. Rendering looks come from `src/shading.ts` (era presets) via `lightlab.setShading`; Light Lab always restores the path tracer on enter. Attract mode always switches back to Light Lab. Any new control must pass the six-viewport overflow check (see doc/roadmap/ui.md).
+
 ## Rules
 
 - The repo is public: no absolute local paths, personal data, or secrets in
