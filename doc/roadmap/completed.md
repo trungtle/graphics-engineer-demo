@@ -162,3 +162,10 @@ Review it with: `git show bc962f1`
 
 **CL: `8b16600`**: levels.ts (6 levels, locked pieces, single gold beam), ui/mirrors.ts (new look, Start over, locked-piece handling), stations resetAll, 73 tests. Screenshot: [level 1](img/stn-006-mirrors-level1-redesign.jpg).
 Review it with: `git show 8b16600`
+
+## Models (MSH-001)
+
+**Status 2026-10-16: COMPLETE.**
+
+**CL: `37274e7`**: converter script, bunny.bin and dragon.bin, mesh.ts + tests, README credit, @types/node.
+Review it with: `git show 37274e7`

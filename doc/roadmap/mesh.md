@@ -19,16 +19,18 @@ Requested 2026-10-16: Light Lab and Decades should be able to show the **Stanfor
 
 <!--task
 id: MSH-001
-status: todo
+status: done
 epic: assets
 deps: []
-cl:
+cl: 37274e7
 -->
 ### MSH-001 — Get and convert the models
 
 After the user approves the download: fetch the two tarballs into the scratchpad, take one resolution of each, scale and center them, compute smooth normals, quantize positions and normals, write compact binary files under `public/models/` (target under 1 MB each), keep the originals out of the repo. Add the required acknowledgement to the README and these docs.
 
-Verify: converted files load in a unit test (triangle count, bounding box, normals unit length); file sizes recorded here; credit present in README.
+Result (2026-10-16, user approved the download and chose the light versions): downloaded `bunny.tar.gz` (4,894,286 bytes) and `dragon_recon.tar.gz` (11,197,764 bytes) from graphics.stanford.edu into the scratchpad (not committed). Both tarballs contain ready-made lower resolutions as ASCII PLY, so no decimator was needed. Used `bun_zipper_res2` (8,171 vertices, 16,301 triangles) and `dragon_vrip_res4` (5,205 vertices, 11,102 triangles; the res3 version has 47,794). `scripts/convert-mesh.mjs` normalizes (largest dimension 1, centered on x and z, base at y = 0) and stores 16-bit quantized positions and 16-bit indices: `public/models/bunny.bin` 146,868 bytes, `dragon.bin` 97,878 bytes. `src/mesh.ts` loads them and computes smooth normals; `src/mesh.test.ts` (11 tests, 84 total) reads the real files. The bunny data has a few isolated vertices no triangle uses (harmless, tested to be under 1%). README credits Stanford as their terms ask. Bounding boxes: bunny 1.000 x 0.986 x 0.776, dragon 1.000 x 0.708 x 0.448. Higher resolutions can be made by rerunning the converter on res3 (dragon) or the 69,451-triangle bunny (needs 32-bit indices).
+
+Verify (original): converted files load in a unit test (triangle count, bounding box, normals unit length); file sizes recorded here; credit present in README.
 
 <!--task
 id: MSH-002
