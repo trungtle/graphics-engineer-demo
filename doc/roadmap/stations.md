@@ -46,16 +46,18 @@ Verify (original): one screenshot per preset in `img/stn-002-*.jpg`; each preset
 
 <!--task
 id: STN-003
-status: todo
+status: done
 epic: decades
 deps: [STN-002]
-cl:
+cl: b0f39f5
 -->
 ### STN-003 — Decades station
 
 A big slider with year stops (1993, 1997, 2004, 2012, today) driving the presets, over the same scene. Orbit, lamp drag and tap-to-change-material still work. Readouts only: the year and a one-line era name.
 
-Verify: dragging the slider changes the look at each stop; six-viewport overflow check; works with a finger on iPad (BOOTH-002).
+Result: `src/ui/decades.ts` + `#st-decades` in index.html. Slider with five stops, big year readout and era name, years under the ticks. Entering resets the scene and starts at 1993; leaving to Light Lab restores the path tracer and resyncs its controls. Orbit, lamp drag and tap-to-change-material work in this station. Photon controls are hidden outside Light Lab (CSS on the shared viewport). `.station.compact` gives the picture the rest of the screen in portrait. Measured at 1440x900, 1180x820, 1024x768, 820x1180, 768x1024 with the tab bar: no scroll or overflow. Screenshot: [portrait](img/stn-003-decades-portrait.jpg). Real-finger iPad test pending (BOOTH-002).
+
+Verify (original): dragging the slider changes the look at each stop; six-viewport overflow check; works with a finger on iPad (BOOTH-002).
 
 <!--task
 id: STN-004

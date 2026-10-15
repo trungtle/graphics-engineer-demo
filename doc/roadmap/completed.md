@@ -120,3 +120,10 @@ Review it with: `git show c95a608`
 
 **CL: `dc68f11`**: shader feature mode, shading.ts presets, main.ts shading state.
 Review it with: `git show dc68f11`
+
+## Decades station (STN-003)
+
+**Status 2026-10-15: COMPLETE on desktop; real-finger iPad test pending.**
+
+**CL: `b0f39f5`**: decades.ts, #st-decades, shared stage/panel classes, photon controls hidden outside Light Lab, compact portrait layout.
+Review it with: `git show b0f39f5`
