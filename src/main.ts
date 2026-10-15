@@ -15,6 +15,7 @@ import { initControls } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
+import { createStations } from './stations';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -343,7 +344,21 @@ window.addEventListener('keydown', (e) => {
 });
 // Attract mode: ?idle=<seconds> overrides the 45 s default (0 turns it off).
 const idleParam = params.get('idle');
+const stations = createStations({
+  viewport: document.getElementById('viewport')!,
+  tabs: document.getElementById('tabs')!,
+});
+stations.register({
+  id: 'light',
+  label: 'Light Lab',
+  icon: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
+  root: document.getElementById('st-light')!,
+  viewportSlot: document.getElementById('slot-light')!,
+  onLeave: () => photon?.setEnabled(false),
+});
+
 const idle = initIdle({
+  onStart: () => stations.show('light'),
   scene,
   reset,
   ui,
@@ -354,7 +369,7 @@ const idle = initIdle({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
@@ -431,6 +446,12 @@ function drawPhotonView(pose: { pos: [number, number, number]; fwd: [number, num
 }
 
 function tick(now: number) {
+  // nothing to draw while the canvas is hidden (another station is showing)
+  if (!canvas.isConnected || canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+    last = now;
+    requestAnimationFrame(tick);
+    return;
+  }
   resize();
   if (query && extTimer) {
     const ready = gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE);

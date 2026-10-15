@@ -60,15 +60,24 @@ html, body {
   padding: calc(var(--s-4) + var(--safe-t)) calc(var(--s-4) + var(--safe-r)) calc(var(--s-4) + var(--safe-b))
     calc(var(--s-4) + var(--safe-l));
   display: grid;
+  gap: 0; /* the tab bar carries its own top margin so a hidden bar leaves no gap */
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+/* one screen per station: picture on the left, panel on the right */
+.station {
+  min-height: 0;
+  display: grid;
   gap: var(--s-4);
   grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: 'stage panel';
 }
+.station[hidden] { display: none; }
 
 /* iPad portrait (and any tall window): render on top, panel below */
 @media (orientation: portrait) {
-  #app {
+  .station {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 60fr) minmax(0, 40fr);
     grid-template-areas:
@@ -76,6 +85,30 @@ html, body {
       'panel';
   }
 }
+
+/* bottom tab bar (hidden while only one station exists) */
+#tabs { display: flex; justify-content: center; gap: var(--s-2); margin-top: var(--s-4); }
+#tabs[hidden] { display: none; }
+.tab {
+  min-height: var(--tap);
+  padding: 0 var(--s-5);
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font: 700 var(--fs-body) / 1 inherit;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  cursor: pointer;
+}
+.tab svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tab[aria-selected='true'] { background: var(--ink); color: #fff; }
+.tab:active { transform: scale(0.97); }
+
+.viewport-slot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 
 #stage {
   grid-area: stage;
@@ -331,7 +364,9 @@ h2 {
 
 /* short landscape screens (e.g. iPad 1024x768): tighten vertical rhythm */
 @media (orientation: landscape) and (max-height: 860px) {
-  #app { gap: var(--s-3); padding-top: calc(var(--s-3) + var(--safe-t)); padding-bottom: calc(var(--s-3) + var(--safe-b)); }
+  .station { gap: var(--s-3); }
+  #tabs { margin-top: var(--s-3); }
+  #app { padding-top: calc(var(--s-3) + var(--safe-t)); padding-bottom: calc(var(--s-3) + var(--safe-b)); }
   #panel { gap: var(--s-3); }
   #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
   }
@@ -339,7 +374,8 @@ h2 {
 @media (orientation: portrait) and (max-height: 1100px) {
   #panel { gap: var(--s-3); }
   #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
-  #app { gap: var(--s-3); }
+  .station { gap: var(--s-3); }
+  #tabs { margin-top: var(--s-3); }
 }
 
 /* color chips in the result caption */

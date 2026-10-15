@@ -27,6 +27,8 @@ export function initIdle(opts: {
   /** Total rays traced since the page loaded (never resets). */
   totalRays: () => number;
   timeoutSeconds: number;
+  /** Called when attract mode starts (before the show), e.g. to switch to the first station. */
+  onStart?: () => void;
 }): Idle {
   const { scene, ui, eq, photon } = opts;
   let timeoutMs = opts.timeoutSeconds * 1000;
@@ -46,6 +48,7 @@ export function initIdle(opts: {
   function start() {
     if (active) return;
     active = true;
+    opts.onStart?.();
     raysAtStart = opts.totalRays();
     document.body.classList.add('idle');
     photon.setEnabled(false);

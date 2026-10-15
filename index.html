@@ -8,10 +8,13 @@
   </head>
   <body>
     <main id="app">
+      <div class="station" id="st-light" data-station="light">
       <section id="stage" aria-label="Live path-traced scene">
-        <div id="viewport">
-          <canvas id="view"></canvas>
-          <div id="hud" hidden></div>
+        <div class="viewport-slot" id="slot-light">
+          <div id="viewport">
+            <canvas id="view"></canvas>
+            <div id="hud" hidden></div>
+          </div>
         </div>
         <p id="explain" role="status" aria-live="polite"></p>
       </section>
@@ -38,7 +41,9 @@
 
         <section id="controls" aria-label="Controls"></section>
       </aside>
+      </div>
 
+      <nav id="tabs" aria-label="Stations" hidden></nav>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
