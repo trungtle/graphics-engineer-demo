@@ -16,6 +16,7 @@ import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
 import { createStations } from './stations';
+import { ERAS, GI, type Shading } from './shading';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -82,6 +83,12 @@ const uTrace = {
   inside: loc(traceProg, 'u_inside'),
   th: loc(traceProg, 'u_th'),
   blend: loc(traceProg, 'u_blend'),
+  mode: loc(traceProg, 'u_mode'),
+  model: loc(traceProg, 'u_model'),
+  shadows: loc(traceProg, 'u_shadows'),
+  reflect: loc(traceProg, 'u_reflect'),
+  ao: loc(traceProg, 'u_ao'),
+  aa: loc(traceProg, 'u_aa'),
 };
 const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res'), dim: loc(dispProg, 'u_dim'), off: loc(dispProg, 'u_off') };
 gl.bindVertexArray(gl.createVertexArray());
@@ -94,6 +101,8 @@ let rh = 0;
 let frame = 0;
 let scale = Number(params.get('scale') ?? '1');
 const scene = defaultScene();
+// How the main picture is shaded. Light Lab always uses the path tracer; other stations change this.
+let shading: Shading = GI;
 
 // First-person "photon's view": a small second render of the box from the photon's position.
 const FP_W = 160;
@@ -369,7 +378,7 @@ const idle = initIdle({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading: (s: Shading) => { shading = s; reset(); } };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
@@ -387,6 +396,7 @@ function tracePass(
   cam: Camera,
   th: number,
   inside: boolean,
+  fx: Shading = GI,
 ) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
   gl.viewport(0, 0, w, h);
@@ -399,6 +409,12 @@ function tracePass(
   gl.uniform1f(uTrace.blend, blend);
   gl.uniform1f(uTrace.th, th);
   gl.uniform1i(uTrace.inside, inside ? 1 : 0);
+  gl.uniform1i(uTrace.mode, fx.mode === 'features' ? 1 : 0);
+  gl.uniform1i(uTrace.model, fx.model);
+  gl.uniform1i(uTrace.shadows, fx.shadows ? 1 : 0);
+  gl.uniform1i(uTrace.reflect, fx.reflections ? 1 : 0);
+  gl.uniform1i(uTrace.ao, fx.ao ? 1 : 0);
+  gl.uniform1i(uTrace.aa, fx.aa ? 1 : 0);
   gl.uniform1i(uTrace.bounces, scene.bounces);
   gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
   gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
@@ -467,7 +483,8 @@ function tick(now: number) {
     gl.beginQuery(extTimer.TIME_ELAPSED_EXT, query);
   }
 
-  tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cameraOf(scene), 0.45, false);
+  // deterministic raster-era looks replace the picture every frame; the path tracer accumulates
+  tracePass(targets[cur], targets[1 - cur], rw, rh, frame, shading.mode === 'features' ? 1 : 0, cameraOf(scene), 0.45, false, shading);
   raysTotal += rw * rh * (scene.bounces + 1);
   if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);
   cur = 1 - cur;
