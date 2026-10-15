@@ -15,7 +15,8 @@ export interface PieceDef {
 export interface Level {
   name: string;
   laser: { pos: Vec2; angle: number };
-  targets: { pos: Vec2; r: number }[];
+  /** `channel`: which color of the beam lights it (0 red, 1 green, 2 blue); unset = any */
+  targets: { pos: Vec2; r: number; channel?: number }[];
   blockers: { a: Vec2; b: Vec2 }[];
   /** where the pieces start */
   pieces: PieceDef[];
@@ -37,86 +38,46 @@ const prism = (x: number, y: number, a = 0, fixed = false): PieceDef => ({
 });
 
 /**
- * Easy to hard. Level 1 already has both kinds of piece: the glass prism is locked in place so the player can
- * see what it does (it turns the beam), and only the mirror moves.
+ * One puzzle, and a hard one. The white beam has to be turned down by a prism, carried across and over a wall by
+ * four mirrors, and then sent through a second prism that splits it into red, green and blue (glass bends each
+ * color a different amount). Each colored target is lit only by its own color.
+ * The 2D engine in optics.ts decides where the light goes; the 3D bench only draws it.
  */
 export const LEVELS: Level[] = [
   {
-    name: 'Meet the pieces',
-    laser: { pos: [6, 45], angle: 0 },
-    targets: [{ pos: [70, 15], r: 3.5 }],
-    blockers: [],
-    pieces: [prism(34, 35, 0, true), mirror(60, 48)],
-    solution: [
-      { pos: [34, 35], angle: 0 },
-      { pos: [42, 15], angle: deg(-45) },
-    ],
-  },
-  {
-    name: 'Glass and mirror',
+    name: 'The bench',
     laser: { pos: [6, 50], angle: 0 },
-    targets: [{ pos: [70, 15], r: 3.5 }],
-    blockers: [{ a: [58, 60], b: [58, 24] }],
-    pieces: [prism(20, 10, 90), mirror(30, 55)],
-    solution: [
-      { pos: [34, 40], angle: 0 },
-      { pos: [42, 15], angle: deg(-45) },
+    targets: [
+      { pos: [75, 12], r: 2.4, channel: 0 },
+      { pos: [75, 17], r: 2.4, channel: 1 },
+      { pos: [75, 23], r: 2.4, channel: 2 },
     ],
-  },
-  {
-    name: 'Two turns',
-    laser: { pos: [6, 50], angle: 0 },
-    targets: [{ pos: [70, 15], r: 3.5 }],
-    blockers: [],
-    pieces: [mirror(20, 35), mirror(50, 25)],
-    solution: [
-      { pos: [30, 50], angle: deg(-45) },
-      { pos: [30, 15], angle: deg(-45) },
-    ],
-  },
-  {
-    name: 'Over the wall',
-    laser: { pos: [6, 15], angle: 0 },
-    targets: [{ pos: [62, 15], r: 3.5 }],
-    blockers: [{ a: [40, 0], b: [40, 40] }],
-    pieces: [mirror(15, 40), mirror(35, 52), mirror(60, 40)],
-    solution: [
-      { pos: [20, 15], angle: deg(45) },
-      { pos: [20, 50], angle: deg(45) },
-      { pos: [62, 50], angle: deg(-45) },
-    ],
-  },
-  {
-    name: 'Prism relay',
-    laser: { pos: [6, 45], angle: 0 },
-    targets: [{ pos: [70, 18], r: 3.5 }],
-    blockers: [],
-    pieces: [prism(15, 15, 90), prism(62, 40, 270)],
-    solution: [
-      { pos: [34, 35], angle: 0 },
-      { pos: [50, 28], angle: deg(180) },
-    ],
-  },
-  {
-    name: 'Zigzag',
-    laser: { pos: [6, 10], angle: 0 },
-    targets: [{ pos: [70, 10], r: 3.5 }],
     blockers: [
-      { a: [25, 0], b: [25, 38] },
-      { a: [52, 60], b: [52, 22] },
+      { a: [45, 0], b: [45, 35] },
+      { a: [58, 60], b: [58, 46] },
     ],
-    pieces: [mirror(15, 30), mirror(35, 35), mirror(45, 45), mirror(60, 30)],
+    pieces: [prism(15, 14, 90), mirror(62, 44), mirror(12, 33, 60), mirror(70, 25, 30), mirror(30, 55, 120), prism(45, 6, 270)],
     solution: [
-      { pos: [15, 10], angle: deg(45) },
-      { pos: [15, 50], angle: deg(45) },
-      { pos: [40, 50], angle: deg(-45) },
-      { pos: [40, 10], angle: deg(-45) },
+      { pos: [20, 40], angle: 0 },
+      { pos: [28, 25], angle: deg(-45) },
+      { pos: [40, 25], angle: deg(45) },
+      { pos: [40, 48], angle: deg(45) },
+      { pos: [52, 48], angle: deg(-45) },
+      { pos: [52, 28], angle: deg(15) },
     ],
   },
 ];
 
-/** One bright beam (a single laser color keeps it easy to tell from the silver mirrors and the red-and-white target). */
-export const BEAMS: { ior: number; color: [number, number, number] }[] = [{ ior: 1.5, color: [255, 214, 102] }];
+/**
+ * White light is three beams (red, green, blue) that travel together until glass bends them by different amounts.
+ * The numbers are exaggerated on purpose so the rainbow is easy to see; all three still bounce inside a
+ * 45-degree prism (the critical angle of the weakest, 1.42, is just under 45 degrees).
+ */
+export const BEAMS: { ior: number; color: [number, number, number] }[] = [
+  { ior: 1.42, color: [255, 70, 70] },
+  { ior: 1.58, color: [70, 255, 70] },
+  { ior: 1.78, color: [70, 110, 255] },
+];
 
 /** The optical elements for a piece. */
 export function pieceElements(p: PieceDef): Element[] {
@@ -138,17 +99,21 @@ export interface Evaluation {
 }
 
 export function evaluate(level: Level, pieces: PieceDef[]): Evaluation {
-  const elements: Element[] = [];
-  for (const b of level.blockers) elements.push({ kind: 'blocker', a: b.a, b: b.b });
-  for (const p of pieces) elements.push(...pieceElements(p));
-  const targetStart = elements.length;
-  for (const t of level.targets) elements.push({ kind: 'target', pos: t.pos, r: t.r });
+  const base: Element[] = [];
+  for (const b of level.blockers) base.push({ kind: 'blocker', a: b.a, b: b.b });
+  for (const p of pieces) base.push(...pieceElements(p));
 
   const dir: Vec2 = [Math.cos(level.laser.angle), Math.sin(level.laser.angle)];
   const lit = level.targets.map(() => false);
-  const beams = BEAMS.map((b) => {
+  const beams = BEAMS.map((b, bi) => {
+    // a colored target only stops (and counts) its own color; the other colors pass through it
+    const mine: number[] = [];
+    level.targets.forEach((t, ti) => {
+      if (t.channel === undefined || t.channel === bi) mine.push(ti);
+    });
+    const elements: Element[] = [...base, ...mine.map((ti): Element => ({ kind: 'target', pos: level.targets[ti].pos, r: level.targets[ti].r }))];
     const r = traceBeam(level.laser.pos, dir, elements, ARENA, { ior: b.ior });
-    for (const h of r.hits) lit[h - targetStart] = true;
+    for (const h of r.hits) lit[mine[h - base.length]] = true;
     return { points: r.points, color: b.color };
   });
   return { beams, lit, won: lit.every(Boolean) };

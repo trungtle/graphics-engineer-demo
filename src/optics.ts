@@ -22,6 +22,8 @@ export interface Target {
   kind: 'target';
   pos: Vec2;
   r: number;
+  /** if set, only this color of light (0 red, 1 green, 2 blue) is stopped by it and counts; other colors pass through */
+  channel?: number;
 }
 export type Element = Mirror | Blocker | Glass | Target;
 
