@@ -17,6 +17,7 @@ import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
 import { initDecades } from './ui/decades';
 import { initBudget } from './ui/budget';
+import { initMirrors } from './ui/mirrors';
 import { createStations } from './stations';
 import { ERAS, GI, type Shading } from './shading';
 
@@ -398,6 +399,16 @@ stations.register({
   viewportSlot: document.getElementById('slot-budget')!,
   onEnter: budget.onEnter,
   onLeave: budget.onLeave,
+});
+
+const mirrors = initMirrors();
+stations.register({
+  id: 'mirrors',
+  label: 'Mirrors',
+  icon: '<path d="M4 20L20 4"/><path d="M3 9h7M14 13l4 0"/>',
+  root: document.getElementById('st-mirrors')!,
+  onEnter: mirrors.onEnter,
+  onLeave: mirrors.onLeave,
 });
 
 const idle = initIdle({
