@@ -141,3 +141,10 @@ Review it with: `git show 884e825`
 
 **CL: `2eba7a4`**: optics.ts + 11 tests.
 Review it with: `git show 2eba7a4`
+
+## Mirrors puzzle (STN-006)
+
+**Status 2026-10-15: COMPLETE on desktop; real-finger iPad test pending.**
+
+**CL: `dad77f4`**: levels.ts + tests, ui/mirrors.ts, #st-mirrors, puzzle styles.
+Review it with: `git show dad77f4`

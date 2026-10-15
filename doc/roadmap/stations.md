@@ -89,16 +89,18 @@ Result: `src/optics.ts` (reflect, refract with total internal reflection, critic
 
 <!--task
 id: STN-006
-status: todo
+status: done
 epic: mirrors
 deps: [STN-001, STN-005]
-cl:
+cl: dad77f4
 -->
 ### STN-006 — Mirrors puzzle station
 
 2D canvas game: a laser, a target, draggable and rotatable mirrors and glass prisms, about 6 levels, a win state when the beam reaches the target. Touch-first (big handles, no hover). The beam is drawn glowing, tinted like the lamp.
 
-Verify: every level is solvable (tested by solving each with the engine); drag and rotate work with synthetic pointer events; six-viewport overflow check.
+Result: `src/levels.ts` (5 levels: Bounce, Two turns, Over the wall, Glass corner, Glass and mirror; mirror and right-angle prism pieces; three beams with slightly different glass bend so white light can spread into colors) + `src/levels.test.ts` (20 tests, 67 total: every level not solved at the start, solvable with its listed solution, solution tolerant to about 1 unit of sloppiness, solution angles on the 15 degree snap) + `src/ui/mirrors.ts` (2D canvas: dark arena, glowing additive beams, laser, ringed targets that glow green when lit, selectable pieces, drag to move with half-unit snap, rotate handle with 15 degree snap, 22 px grab padding, progress dots, Reset, Next/Again). Verified with synthetic pointer drags: all five levels solved by moving and turning pieces (prism levels included); the dots fill and the last button becomes Again. No overflow or scroll at the six viewports with the tab bar. Screenshot: [level 5](img/stn-006-mirrors-level5.jpg). Real-finger iPad test pending (BOOTH-002).
+
+Verify (original): every level is solvable (tested by solving each with the engine); drag and rotate work with synthetic pointer events; six-viewport overflow check.
 
 <!--task
 id: STN-007

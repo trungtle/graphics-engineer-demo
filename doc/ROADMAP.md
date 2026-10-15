@@ -55,7 +55,7 @@ in the roadmap.
 | Interaction | [interaction.md](roadmap/interaction.md) | 1 | 7 | All v1 interactions done (INT-001..007, incl. All-samples view and photon first-person view); only stretch INT-S1 remains |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); careers strip (UI-005) later removed and presenter panel (UI-006) dropped by user: no explanatory text, presenter explains onsite. Debug HUD only with ?debug |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live on GitHub Pages (project URL redirects to the account's custom domain); offline PWA mandatory |
-| Stations | [stations.md](roadmap/stations.md) | 2 | 5 | Chosen 2026-10-15: shell + tab bar (STN-001) feature shading/era presets (STN-002) Decades (STN-003), 16 ms challenge (STN-004) and optics engine (STN-005) done; Decades and 16 ms share a feature-flag shader; Mirrors is a separate 2D canvas; attract mode stays Light Lab only |
+| Stations | [stations.md](roadmap/stations.md) | 1 | 6 | Chosen 2026-10-15: shell + tab bar (STN-001) feature shading/era presets (STN-002) Decades (STN-003), 16 ms challenge (STN-004) optics engine (STN-005) and Mirrors puzzle (STN-006) done; only the cross-station pass (STN-007) remains; Decades and 16 ms share a feature-flag shader; Mirrors is a separate 2D canvas; attract mode stays Light Lab only |
 
 Completed history: [completed.md](roadmap/completed.md)
 
