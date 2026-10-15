@@ -16,6 +16,7 @@ import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
 import { initDecades } from './ui/decades';
+import { initBudget } from './ui/budget';
 import { createStations } from './stations';
 import { ERAS, GI, type Shading } from './shading';
 
@@ -386,6 +387,17 @@ stations.register({
   root: document.getElementById('st-decades')!,
   viewportSlot: document.getElementById('slot-decades')!,
   onEnter: decades.onEnter,
+});
+
+const budget = initBudget({ scene, reset, setShading });
+stations.register({
+  id: 'budget',
+  label: '16 ms',
+  icon: '<circle cx="12" cy="13" r="7"/><path d="M12 9v4l2 2M9 3h6"/>',
+  root: document.getElementById('st-budget')!,
+  viewportSlot: document.getElementById('slot-budget')!,
+  onEnter: budget.onEnter,
+  onLeave: budget.onLeave,
 });
 
 const idle = initIdle({

@@ -482,3 +482,75 @@ body.idle #explain strong { color: var(--ink); }
 @media (orientation: portrait) {
   .station.compact { grid-template-rows: minmax(0, 1fr) auto; }
 }
+
+/* ---- 16 ms challenge ---- */
+#budget-controls { display: flex; flex-direction: column; gap: var(--s-3); }
+.bud-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.bud-ms { font-size: calc(var(--fs-h1) * 1.4); font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bud-ms small { font-size: var(--fs-body); font-weight: 650; color: var(--muted); margin-left: var(--s-2); letter-spacing: 0; }
+.bud-fps { padding: 6px 14px; border-radius: 999px; background: #dcfce7; color: #166534; font-weight: 800; font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
+.bud-fps.over { background: #fee2e2; color: #991b1b; }
+.bud-bar { position: relative; height: 16px; border-radius: 8px; background: var(--line); overflow: visible; }
+.bud-fill { height: 100%; border-radius: 8px; background: #16a34a; width: 0; transition: width 0.2s, background 0.2s; }
+.bud-fill.over { background: #dc2626; }
+.bud-mark { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1px; border-radius: 2px; background: var(--ink); }
+.feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.feat {
+  min-height: 52px;
+  padding: 6px var(--s-3);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+}
+.feat .feat-ms { font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; }
+.feat.on { border-color: var(--c-fr); background: #eff4ff; }
+.feat.on .feat-ms { color: var(--c-fr); }
+.feat:disabled { opacity: 0.4; cursor: default; }
+.feat[data-f='gi'] { grid-column: 1 / -1; }
+.feat:active:not(:disabled) { transform: scale(0.98); }
+.tier-row { display: flex; gap: var(--s-2); }
+.tier {
+  flex: 1;
+  min-height: var(--tap);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tier.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.bud-score { display: flex; justify-content: space-between; font-size: var(--fs-body); font-weight: 650; color: var(--muted); }
+.bud-score b { color: var(--ink); font-size: calc(var(--fs-body) * 1.3); font-variant-numeric: tabular-nums; }
+.bud-score i { color: #d97706; font-style: normal; }
+.bud-motion { width: 100%; height: 44px; display: block; }
+
+/* the 16 ms panel is the tallest: spread the effect cards across in portrait, tighten on short landscape */
+@media (orientation: portrait) {
+  #budget-controls .feat-grid { grid-template-columns: repeat(3, 1fr); }
+  #budget-controls { gap: var(--s-2); }
+}
+@media (orientation: landscape) and (max-height: 860px) {
+  #budget-controls { gap: var(--s-2); }
+  .feat { min-height: 44px; padding: 3px 10px; }
+  .tier { min-height: 42px; }
+  .bud-ms { font-size: calc(var(--fs-h1) * 1.1); }
+  .bud-motion { height: 34px; }
+}
+
+/* the "title beside the equation" row is Light Lab's; other stations' panels use the full width under the title */
+@media (orientation: portrait) {
+  .panel-col:not(#panel) > section { grid-column: 1 / -1; }
+}
