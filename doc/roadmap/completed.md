@@ -106,3 +106,10 @@ Review it with: `git show ce8ed8b`
 
 **CL: `5fdee61`**: deleted careers.ts and the strip, tagline, equation caption (equation.ts now highlight-only), slider captions, lamp hint, default and descriptive toasts; layout grids lose the careers row. 24 tests pass; six viewports re-measured clean.
 Review it with: `git show 5fdee61`
+
+## Station shell (STN-001)
+
+**Status 2026-10-15: COMPLETE.**
+
+**CL: `c95a608`**: stations.ts, .station layout, tab bar, idle onStart hook, hidden-canvas pause.
+Review it with: `git show c95a608`

@@ -16,16 +16,18 @@ The first two stations share one renderer: the GL path tracer gains a set of on/
 
 <!--task
 id: STN-001
-status: todo
+status: done
 epic: shell
 deps: []
-cl:
+cl: c95a608
 -->
 ### STN-001 — Station shell: tab bar, registry, shared viewport
 
 `.station` containers inside `#app`, a bottom `#tabs` bar built from a registry (`src/stations.ts`), `show(id)` swaps visibility, moves the shared `#viewport` into the active station's slot, and calls enter/leave hooks. Layout rules move from `#app` to `.station`. The render loop skips frames while the canvas is hidden. Attract mode switches to Light Lab when it starts. Bar hidden with one station.
 
-Verify: registering a second station from the console shows the tabs, switching moves the canvas with no resize glitch, Light Lab behaves exactly as before, six-viewport overflow check still clean with the tab bar showing.
+Result: `src/stations.ts` (registry, tab bar, viewport re-parenting, enter/leave hooks), `.station` containers and `#tabs` in index.html, layout rules moved from `#app` to `.station`, render loop skips frames while the canvas is hidden, attract mode calls `stations.show('light')` on start. Tab bar hidden with one station and then leaves no gap (canvas 905x779 at 1440x900, identical to before). Verified with a dummy second station registered from the console: tabs appear, canvas moves slot to slot, back to Light Lab restores it, attract mode switches to Light; no scroll or panel overflow at 1440x900, 1180x820, 1024x768, 820x1180, 768x1024 with the tab bar showing (tab bar is 48 px). Dev hook: `window.lightlab.stations`.
+
+Verify (original): registering a second station from the console shows the tabs, switching moves the canvas with no resize glitch, Light Lab behaves exactly as before, six-viewport overflow check still clean with the tab bar showing.
 
 <!--task
 id: STN-002
