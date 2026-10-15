@@ -110,7 +110,7 @@ html, body {
 
 .viewport-slot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 
-#stage {
+#stage, .stage-card {
   grid-area: stage;
   min-height: 0;
   display: flex;
@@ -167,7 +167,7 @@ html, body {
   pointer-events: none;
 }
 
-#panel {
+#panel, .panel-col {
   grid-area: panel;
   min-height: 0;
   display: flex;
@@ -176,14 +176,16 @@ html, body {
 }
 
 #panel > section,
-#panel > header {
+#panel > header,
+.panel-col > section,
+.panel-col > header {
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: var(--s-4) var(--s-5);
 }
 
-#brand h1 { margin: 0; font-size: var(--fs-h1); line-height: 1.1; letter-spacing: -0.02em; }
+#brand h1, .brand h1 { margin: 0; font-size: var(--fs-h1); line-height: 1.1; letter-spacing: -0.02em; }
 
 h2 {
   margin: 0 0 var(--s-2);
@@ -281,7 +283,7 @@ h2 {
 
 /* iPad portrait: title and equation share a row so the controls get the height */
 @media (orientation: portrait) {
-  #panel {
+  #panel, .panel-col {
     display: grid;
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.8fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -367,12 +369,12 @@ h2 {
   .station { gap: var(--s-3); }
   #tabs { margin-top: var(--s-3); }
   #app { padding-top: calc(var(--s-3) + var(--safe-t)); padding-bottom: calc(var(--s-3) + var(--safe-b)); }
-  #panel { gap: var(--s-3); }
+  #panel, .panel-col { gap: var(--s-3); }
   #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
   }
 
 @media (orientation: portrait) and (max-height: 1100px) {
-  #panel { gap: var(--s-3); }
+  #panel, .panel-col { gap: var(--s-3); }
   #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
   .station { gap: var(--s-3); }
   #tabs { margin-top: var(--s-3); }
@@ -463,3 +465,20 @@ body.idle #explain strong { color: var(--ink); }
   animation: idle-pulse 1.6s ease-in-out infinite;
 }
 @keyframes idle-pulse { 50% { transform: scale(1.07); opacity: 0.85; } }
+
+/* ---- decades station ---- */
+.era-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-2); }
+.era-year { font-size: calc(var(--fs-h1) * 1.4); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.era-name { font-size: var(--fs-body); font-weight: 650; color: var(--muted); text-align: right; }
+.era-ticks { display: flex; justify-content: space-between; padding: 0 14px; color: var(--muted); font-size: var(--fs-small); font-weight: 650; }
+
+/* photon mode belongs to Light Lab only: hide its controls when the shared viewport sits in another station */
+.viewport-slot:not(#slot-light) #photon-btn,
+.viewport-slot:not(#slot-light) #photon-tools,
+.viewport-slot:not(#slot-light) #photon-overlay,
+.viewport-slot:not(#slot-light) #fp-frame { display: none !important; }
+
+/* stations with a small panel give the picture the rest of the screen in portrait */
+@media (orientation: portrait) {
+  .station.compact { grid-template-rows: minmax(0, 1fr) auto; }
+}

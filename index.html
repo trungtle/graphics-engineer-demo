@@ -9,7 +9,7 @@
   <body>
     <main id="app">
       <div class="station" id="st-light" data-station="light">
-      <section id="stage" aria-label="Live path-traced scene">
+      <section id="stage" class="stage-card" aria-label="Live path-traced scene">
         <div class="viewport-slot" id="slot-light">
           <div id="viewport">
             <canvas id="view"></canvas>
@@ -19,7 +19,7 @@
         <p id="explain" role="status" aria-live="polite"></p>
       </section>
 
-      <aside id="panel">
+      <aside id="panel" class="panel-col">
         <header id="brand">
           <h1>Light Lab</h1>
         </header>
@@ -41,6 +41,16 @@
 
         <section id="controls" aria-label="Controls"></section>
       </aside>
+      </div>
+
+      <div class="station compact" id="st-decades" data-station="decades" hidden>
+        <section class="stage-card" aria-label="One scene through the decades">
+          <div class="viewport-slot" id="slot-decades"></div>
+        </section>
+        <aside class="panel-col">
+          <header class="brand"><h1>Through the decades</h1></header>
+          <section id="decades-controls" aria-label="Era"></section>
+        </aside>
       </div>
 
       <nav id="tabs" aria-label="Stations" hidden></nav>

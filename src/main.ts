@@ -15,6 +15,7 @@ import { initControls } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
+import { initDecades } from './ui/decades';
 import { createStations } from './stations';
 import { ERAS, GI, type Shading } from './shading';
 
@@ -357,13 +358,34 @@ const stations = createStations({
   viewport: document.getElementById('viewport')!,
   tabs: document.getElementById('tabs')!,
 });
+const setShading = (s: Shading) => {
+  shading = s;
+  reset();
+};
+
 stations.register({
   id: 'light',
   label: 'Light Lab',
   icon: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
   root: document.getElementById('st-light')!,
   viewportSlot: document.getElementById('slot-light')!,
+  onEnter: () => {
+    // another station may have changed the scene and the shading: bring the controls back in line
+    setShading(GI);
+    ui.syncBounces();
+    ui.syncLamp();
+  },
   onLeave: () => photon?.setEnabled(false),
+});
+
+const decades = initDecades({ scene, reset, setShading });
+stations.register({
+  id: 'decades',
+  label: 'Decades',
+  icon: '<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',
+  root: document.getElementById('st-decades')!,
+  viewportSlot: document.getElementById('slot-decades')!,
+  onEnter: decades.onEnter,
 });
 
 const idle = initIdle({
@@ -378,7 +400,7 @@ const idle = initIdle({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading: (s: Shading) => { shading = s; reset(); } };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
