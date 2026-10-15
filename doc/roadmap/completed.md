@@ -155,3 +155,10 @@ Review it with: `git show dad77f4`
 
 **CL: `bc962f1`**: 100-switch soak (flat heap, no errors), docs and CLAUDE.md stations section.
 Review it with: `git show bc962f1`
+
+## Mirrors redesign (user feedback)
+
+**Status 2026-10-16: COMPLETE on desktop.**
+
+**CL: `8b16600`**: levels.ts (6 levels, locked pieces, single gold beam), ui/mirrors.ts (new look, Start over, locked-piece handling), stations resetAll, 73 tests. Screenshot: [level 1](img/stn-006-mirrors-level1-redesign.jpg).
+Review it with: `git show 8b16600`

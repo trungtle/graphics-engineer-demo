@@ -6,6 +6,10 @@ The first two stations share one renderer: the GL path tracer gains a set of on/
 
 ## Decisions
 
+- **Mirrors puzzle redesign** (2026-10-16, user feedback, `8b16600`): the pieces were hard to tell apart (mirror, beam and target were all thin white-gray). Now: laser = steel body with a glowing lens; beam = one gold laser with bloom and a flare at each turn (dispersion into a rainbow dropped for readability); mirror = chrome bar with a highlight streak and shadow; prism = bevelled glass with a glare strip; target = red-and-white bullseye with a slow attention ring, turning green with a check mark when lit; walls = steel with hazard stripes. No text labels. Pieces that are part of the puzzle are locked and show a padlock.
+- **Ramp** (2026-10-16, user feedback: high-school students, introduce the prism at level 1): six levels. 1 Meet the pieces (locked prism turns the beam, the player places one mirror), 2 Glass and mirror (both free, with a wall), 3 Two turns, 4 Over the wall, 5 Prism relay (two prisms), 6 Zigzag (four mirrors, two walls). Every level is test-checked: unsolved at the start, solvable, tolerant to about 1 unit of sloppiness.
+- **Reset** (2026-10-16, user feedback): a Start over button returns to level 1 with no progress; Reset restarts the current level; attract mode resets the puzzle to level 1 for the next student (`Station.onReset`, `stations.resetAll()`).
+
 - **Switching** (2026-10-15, user): a bottom tab bar, always visible, one tab per station. The bar is hidden while only one station is registered.
 - **Frame cost in the 16 ms challenge** (2026-10-15, user): a *modeled* cost table on a fictional console, identical on every device (for example shadows +3 ms, reflections +5 ms, global illumination +8 ms). Not measured GPU time, and presented as game-style numbers. Over budget makes the picture visibly stutter.
 - **Attract mode** (2026-10-15, user): unchanged. When it starts it switches to the Light Lab tab and plays the existing show; no per-station idle loops.
