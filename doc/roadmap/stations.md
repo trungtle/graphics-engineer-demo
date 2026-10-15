@@ -107,7 +107,7 @@ id: STN-007
 status: done
 epic: polish
 deps: [STN-003, STN-004, STN-006]
-cl: PENDING
+cl: bc962f1
 -->
 ### STN-007 — Cross-station polish and device pass
 

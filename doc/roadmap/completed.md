@@ -148,3 +148,10 @@ Review it with: `git show 2eba7a4`
 
 **CL: `dad77f4`**: levels.ts + tests, ui/mirrors.ts, #st-mirrors, puzzle styles.
 Review it with: `git show dad77f4`
+
+## Cross-station pass (STN-007)
+
+**Status 2026-10-15: COMPLETE (Phase 6 done).**
+
+**CL: `bc962f1`**: 100-switch soak (flat heap, no errors), docs and CLAUDE.md stations section.
+Review it with: `git show bc962f1`
