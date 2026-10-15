@@ -31,16 +31,18 @@ Verify (original): registering a second station from the console shows the tabs,
 
 <!--task
 id: STN-002
-status: todo
+status: done
 epic: shading
 deps: [STN-001]
-cl:
+cl: dc68f11
 -->
 ### STN-002 — Shading features in the shader (presets)
 
 Add feature flags to the trace shader: lighting model (flat, Lambert point light, Phong), hard shadows, reflections, ambient occlusion (cheap), and global illumination (the existing path tracer). Non-GI modes are deterministic and do not accumulate (blend weight 1, no noise). A preset table maps era steps to flag sets. Picking and photon mode keep working in GI mode.
 
-Verify: one screenshot per preset in `img/stn-002-*.jpg`; each preset renders identically across frames (no noise) except GI; unit test for the preset table (monotonic: each step only adds features).
+Result: shader uniforms `u_mode/u_model/u_shadows/u_reflect/u_ao/u_aa` (feature mode = a point light at the lamp, hard shadow ray, one reflection bounce on mirror/metal/glass, 6-ray fake ambient occlusion, 4-sample anti-aliasing; deterministic, replaces the picture every frame, blend weight 1), `src/shading.ts` (Shading type, ERAS presets 1993/1997/2004/2012/Today, `includes`) + 3 tests (27 total), main.ts `shading` state with `lightlab.setShading`. The Today preset is the unchanged path tracer. Screenshots: [1993](img/stn-002-1993-flat.jpg) [1997](img/stn-002-1997-lit.jpg) [2004](img/stn-002-2004-shadows.jpg) [2012](img/stn-002-2012-reflections.jpg). Lamp size only changes the picture in the Today era (point light before that), which is itself the lesson.
+
+Verify (original): one screenshot per preset in `img/stn-002-*.jpg`; each preset renders identically across frames (no noise) except GI; unit test for the preset table (monotonic: each step only adds features).
 
 <!--task
 id: STN-003

@@ -113,3 +113,10 @@ Review it with: `git show 5fdee61`
 
 **CL: `c95a608`**: stations.ts, .station layout, tab bar, idle onStart hook, hidden-canvas pause.
 Review it with: `git show c95a608`
+
+## Feature shading + era presets (STN-002)
+
+**Status 2026-10-15: COMPLETE.**
+
+**CL: `dc68f11`**: shader feature mode, shading.ts presets, main.ts shading state.
+Review it with: `git show dc68f11`
