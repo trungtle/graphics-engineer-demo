@@ -97,17 +97,24 @@ describe('bench geometry', () => {
 });
 
 describe('camera', () => {
-  it('looks at the middle of the table and sees the whole board', () => {
+  it('sits below the overhead light, so it never looks into it', () => {
+    const light = solvedScene().polys.find((p) => p.planes.some((pl) => pl[1] === -1 && pl[3] < -1))!;
+    const bottom = -light.planes.find((pl) => pl[1] === -1)![3];
+    expect(benchCamera().pos[1]).toBeLessThan(bottom - 1);
+  });
+
+  it('looks at the middle of the table and sees the whole board at landscape, square and portrait shapes', () => {
     const cam = benchCamera();
-    const aspect = 1.15;
-    const centre = project([0, 0, 0.15], aspect, cam);
-    expect(Math.abs(centre[0])).toBeLessThan(0.02);
-    expect(Math.abs(centre[1])).toBeLessThan(0.02);
-    for (const p of [[0, 0], [80, 0], [0, 60], [80, 60]] as const) {
-      const w = puzzleToWorld([p[0], p[1]]);
-      const q = project(w, aspect, cam);
-      expect(Math.abs(q[0])).toBeLessThan(1);
-      expect(Math.abs(q[1])).toBeLessThan(1);
+    // landscape laptop, near-square, and the iPad in portrait (the picture area there is about 0.9)
+    for (const aspect of [1.6, 1.15, 0.9]) {
+      const centre = project([0, 0, 0.25], aspect, cam);
+      expect(Math.abs(centre[0])).toBeLessThan(0.02);
+      expect(Math.abs(centre[1])).toBeLessThan(0.02);
+      for (const p of [[0, 0], [80, 0], [0, 60], [80, 60]] as const) {
+        const q = project(puzzleToWorld([p[0], p[1]]), aspect, cam);
+        expect(Math.abs(q[0])).toBeLessThan(1);
+        expect(Math.abs(q[1])).toBeLessThan(1);
+      }
     }
   });
 });

@@ -19,7 +19,7 @@ const MIRROR_H = 0.7;
 const PRISM_H = 0.7;
 const WALL_T = 0.2;
 const WALL_H = 0.9;
-const BEAM_R = 0.036;
+const BEAM_R = 0.016;
 export const TARGET_H = 0.42;
 
 /** Material numbers shared with the shader (the same ones the path tracer already uses). */
@@ -81,8 +81,9 @@ export const worldToPuzzle = (x: number, z: number): Vec2 => [x / S + ARENA.w / 
 
 /** The fixed camera over the bench. */
 export function benchCamera(): Camera {
-  const pos: Vec3 = [0, 7.8, 7.4];
-  const target: Vec3 = [0, 0, 0.15];
+  // high and nearly overhead, tilted just enough that the pieces still read as solid objects
+  const pos: Vec3 = [0, 10.6, 3.4];
+  const target: Vec3 = [0, 0, 0.25];
   return cameraLookAlong(pos, [target[0] - pos[0], target[1] - pos[1], target[2] - pos[2]]);
 }
 export const BENCH_TH = 0.45;
@@ -169,17 +170,17 @@ export function buildBench(level: Level, pieces: PieceDef[], evaluation: Evaluat
   const lens: Vec2 = [lw[0] - lu[0] * 0.015, lw[2] - lu[1] * 0.015];
   polys.push({ planes: standingBox(lens, lu, 0.04, 0.14, 0.14, BEAM_Y - 0.07), color: [24, 17, 6], mat: MAT.emissive, kind: KIND.plain });
 
-  // a big soft light above the bench
+  // a big soft light above the bench, well above the camera so the camera never looks into it
   polys.push({
     planes: [
-      [1, 0, 0, 7],
-      [-1, 0, 0, 7],
-      [0, 0, 1, 5],
-      [0, 0, -1, 5],
-      [0, 1, 0, 8.2],
-      [0, -1, 0, -8],
+      [1, 0, 0, 10],
+      [-1, 0, 0, 10],
+      [0, 0, 1, 8],
+      [0, 0, -1, 8],
+      [0, 1, 0, 16.2],
+      [0, -1, 0, -16],
     ],
-    color: [2.6, 2.5, 2.3],
+    color: [4.0, 3.8, 3.55],
     mat: MAT.emissive,
     kind: KIND.plain,
   });

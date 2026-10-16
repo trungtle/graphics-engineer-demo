@@ -216,8 +216,8 @@ export function initBench(opts: { setBench: (b: BenchScene | null, live?: boolea
         });
       };
       for (const [lw, a] of [
-        [34, 0.035],
-        [16, 0.07],
+        [12, 0.06],
+        [5, 0.16],
       ] as const) {
         ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
         ctx.lineWidth = lw;
@@ -226,12 +226,12 @@ export function initBench(opts: { setBench: (b: BenchScene | null, live?: boolea
       }
       beam.points.slice(1, -1).forEach((pt) => {
         const s = puzzlePx(pt, BEAM_Y);
-        const g2 = ctx.createRadialGradient(s[0], s[1], 0, s[0], s[1], 26);
-        g2.addColorStop(0, `rgba(${r},${g},${b},0.25)`);
+        const g2 = ctx.createRadialGradient(s[0], s[1], 0, s[0], s[1], 12);
+        g2.addColorStop(0, `rgba(${r},${g},${b},0.22)`);
         g2.addColorStop(1, `rgba(${r},${g},${b},0)`);
         ctx.fillStyle = g2;
         ctx.beginPath();
-        ctx.arc(s[0], s[1], 26, 0, Math.PI * 2);
+        ctx.arc(s[0], s[1], 12, 0, Math.PI * 2);
         ctx.fill();
       });
     });

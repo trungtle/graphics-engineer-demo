@@ -69,9 +69,9 @@ export const LEVELS: Level[] = [
  * amounts. The spread is kept small on purpose, so after a prism they stay together as one thick rainbow ray.
  */
 export const BEAMS: { ior: number; color: [number, number, number] }[] = [
-  { ior: 1.475, color: [255, 70, 70] },
+  { ior: 1.45, color: [255, 70, 70] },
   { ior: 1.5, color: [70, 255, 70] },
-  { ior: 1.525, color: [70, 110, 255] },
+  { ior: 1.55, color: [70, 110, 255] },
 ];
 
 /** The optical elements for a piece. */
