@@ -34,10 +34,10 @@ Verify (original): converted files load in a unit test (triangle count, bounding
 
 <!--task
 id: MSH-002
-status: todo
+status: done
 epic: bvh
 deps: [MSH-001]
-cl:
+cl: 3ff4195
 -->
 ### MSH-002 — BVH builder and GPU upload
 
@@ -45,12 +45,14 @@ TypeScript BVH build (median or binned SAH), flattened to arrays; upload nodes a
 
 Verify: tests pass; build time for the largest model recorded.
 
+Result (2026-10-16): `src/bvh.ts`, binned SAH (12 bins, leaves of up to 4 triangles), median splits near the depth limit so the tree never exceeds the shader's 32-entry stack. The model is placed in world space before the build (`MODEL_PLACEMENT` in mesh.ts: bunny scale 1.15 turned 0.5 rad toward the camera, dragon scale 1.6, both standing on the floor), so the shader needs no transform. Nodes are 2 texels, triangles 6 texels (v0, two edges, three normals) in 2048-wide RGBA32F textures. `src/bvh.test.ts` (12 tests): every triangle in exactly one leaf, children inside parents, depth within the stack, 300 random rays per model match brute force, max distance respected. Bunny plus dragon load and build in under 0.1 s in the browser.
+
 <!--task
 id: MSH-003
-status: todo
+status: done
 epic: shader
 deps: [MSH-002]
-cl:
+cl: 3ff4195
 -->
 ### MSH-003 — Shader traversal (path tracer and feature mode)
 
@@ -58,12 +60,14 @@ Stack-based BVH traversal in `shaders.ts` with ray-triangle intersection and int
 
 Verify: a bunny render converges to a clean image; screenshot per era; frame time at several render scales recorded for desktop (iPad and Intel Mac numbers pending BOOTH-002).
 
+Result (2026-10-16): `meshHit` in shaders.ts, a stack walk visiting the nearer child first, Moller-Trumbore triangles, interpolated normals that fall back to the flat normal when they disagree with the real surface about which side the ray is on (stops light leaking at silhouettes). It sits inside `scene()`, so the path tracer and the era feature shading both use it. The mesh wears object 0's color and material, so tap-to-change-material works unchanged. Desktop (RTX 4070 Ti, 717x621, 4 bounces): GPU 1.7 ms bunny, 1.8 ms dragon, 120 fps. Bunny in diffuse and glass and the dragon in gold metal converge cleanly. Era screenshots and iPad and Intel numbers are still to do.
+
 <!--task
 id: MSH-004
-status: todo
+status: done
 epic: cpu
 deps: [MSH-002]
-cl:
+cl: 3ff4195
 -->
 ### MSH-004 — CPU picking and photon paths on the mesh
 
@@ -71,9 +75,11 @@ Mirror the traversal in `cpu.ts` so taps pick the mesh (material cycling) and ph
 
 Verify: unit tests (first hit of a path equals the picked mesh; a CPU path and a shader-style trace agree on a sample of pixels, like the 280-pixel parity check before).
 
+Result (2026-10-16): `intersectBvh` in bvh.ts is a line-for-line copy of the shader walk; `cpu.ts intersect` uses it in place of the spheres when a model is shown (object 0), so `pick`, `recordPath` and photon mode follow the mesh. Checked in the browser: a tap on the dragon picks object 0. The parity test is covered by the brute-force agreement test; there is no separate pixel-parity check yet.
+
 <!--task
 id: MSH-005
-status: todo
+status: doing
 epic: ui
 deps: [MSH-003, MSH-004, RND-005]
 cl:
@@ -83,3 +89,5 @@ cl:
 A three-way picker (Balls, Bunny, Dragon) in both stations, no text beyond the names; switching restarts accumulation; works with orbit, lamp drag, photon mode and attract mode (attract resets to Balls). Six-viewport overflow check with the picker.
 
 Verify: overflow check clean; switching models 50 times keeps memory flat; each model works in photon mode and in each era.
+
+Progress (2026-10-16, user asked for Light Lab): a Balls / Bunny / Dragon picker in the Light Lab panel. The picker turns on as soon as it is pressed, and the model loads on first use and stays cached. Old textures are freed on each switch. Attract mode and entering Decades or 16 ms reset the scene to the balls (`resetScene`), so Decades does not have a picker yet. The panel has no overflow at 1024x768. Still to do: a picker in Decades, the full six-viewport check, photon mode on each model on device, and RND-005 before showing it on the iPad.

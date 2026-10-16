@@ -176,3 +176,10 @@ Review it with: `git show 37274e7`
 
 **CL: `3708ed4`**: bench.ts + tests, shader bench scene, main.ts bench uniforms, ui/bench.ts, single complex level with one target and a thick rainbow ray, CSS-resolution rendering default. 82 tests.
 Review it with: `git show 3708ed4`
+
+## Bunny and dragon in Light Lab (MSH-002..004)
+
+**Status 2026-10-16: COMPLETE on desktop** (MSH-005 picker: Light Lab part done).
+
+**CL: `3ff4195`**: bvh.ts + 12 tests, shader `meshHit`, cpu.ts mesh picking and photon paths, model picker in the Light Lab panel. 95 tests.
+Review it with: `git show 3ff4195`

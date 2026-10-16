@@ -59,7 +59,7 @@ in the roadmap.
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); careers strip (UI-005) later removed and presenter panel (UI-006) dropped by user: no explanatory text, presenter explains onsite. Debug HUD only with ?debug |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live on GitHub Pages (project URL redirects to the account's custom domain); offline PWA mandatory |
 | Stations | [stations.md](roadmap/stations.md) | 0 | 8 | Chosen 2026-10-15: shell + tab bar (STN-001) feature shading/era presets (STN-002) Decades (STN-003), 16 ms challenge (STN-004) optics engine (STN-005), Mirrors puzzle (STN-006) and cross-station pass (STN-007) done: all of Phase 6 built; Decades and 16 ms share a feature-flag shader; Mirrors is a path-traced 3D optical bench (STN-008) driven by the 2D optics engine; attract mode stays Light Lab only |
-| Meshes | [mesh.md](roadmap/mesh.md) | 4 | 1 | Models downloaded, converted and credited (MSH-001); next: BVH and shader traversal. Needs RND-005 before it can ship |
+| Meshes | [mesh.md](roadmap/mesh.md) | 1 | 4 | Bunny and dragon in Light Lab (MSH-002..004: BVH, shader walk, CPU picking; 1.8 ms GPU on desktop); MSH-005 in progress: picker in Light Lab done, Decades picker and RND-005 left before iPad |
 
 Completed history: [completed.md](roadmap/completed.md)
 
