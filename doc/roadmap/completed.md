@@ -169,3 +169,10 @@ Review it with: `git show 8b16600`
 
 **CL: `37274e7`**: converter script, bunny.bin and dragon.bin, mesh.ts + tests, README credit, @types/node.
 Review it with: `git show 37274e7`
+
+## Mirrors in 3D (STN-008)
+
+**Status 2026-10-16: COMPLETE on desktop.**
+
+**CL: `3708ed4`**: bench.ts + tests, shader bench scene, main.ts bench uniforms, ui/bench.ts, single complex level with one target and a thick rainbow ray, CSS-resolution rendering default. 82 tests.
+Review it with: `git show 3708ed4`

@@ -7,7 +7,7 @@ Four stations on one tab bar:
 - **Light Lab**: a live path tracer. Change bounces, materials and the lamp, follow a single photon, trace all of a pixel's sample paths.
 - **Decades**: the same scene from flat 1993 colors up to path-traced global illumination.
 - **16 ms**: spend a frame-time budget on effects and stay at 60 fps.
-- **Mirrors**: a laser puzzle with mirrors and glass prisms.
+- **Mirrors**: a laser puzzle on a path-traced 3D optical bench: mirrors, glass prisms, and white light that glass spreads into a rainbow.
 
 ## Run it
 

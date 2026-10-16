@@ -6,6 +6,10 @@ The first two stations share one renderer: the GL path tracer gains a set of on/
 
 ## Decisions
 
+- **Mirrors is now a 3D optical bench** (2026-10-16, user: "full 3D version", `3708ed4`): the puzzle is drawn by the path tracer as a real tabletop: perforated steel optical table, chrome mirror slabs, glass prisms, hazard-striped walls, a steel laser with a glowing lens, a target puck, a large soft light overhead. The game logic stays the exact 2D engine (`optics.ts`, `levels.ts`); `src/bench.ts` turns the puzzle state into convex solids (planes), emissive beam cylinders and target pucks for the shader (`u_bench`), and `src/ui/bench.ts` handles touch by casting the finger ray onto the table plane, plus a 2D overlay for the turn handle, the selection outline and a soft beam glow. While a piece is dragged, frames are blended instead of restarted so the picture does not flash noisy; on release it converges cleanly. The old 2D canvas view (`ui/mirrors.ts`) is removed.
+- **One complex level, one target, one thick rainbow ray** (2026-10-16, user): a single puzzle using two prisms (one turns the beam by total internal reflection, the other spreads it), four mirrors and two walls. White light is three beams with slightly different glass bend (1.475 / 1.5 / 1.525), so after the second prism it becomes one thick ray with rainbow edges rather than three separate beams. The one target needs the whole ray (all three colors). Test-checked: unsolved at start, solvable, tolerant to 1 unit in any diagonal direction, every piece needed.
+- **Render resolution** (2026-10-16): the path tracer now renders at CSS-pixel resolution by default (scale = 1 / devicePixelRatio, override with `?scale=`), 2-4x fewer pixels on retina screens and iPads; overlays stay sharp.
+
 - **Mirrors puzzle redesign** (2026-10-16, user feedback, `8b16600`): the pieces were hard to tell apart (mirror, beam and target were all thin white-gray). Now: laser = steel body with a glowing lens; beam = one gold laser with bloom and a flare at each turn (dispersion into a rainbow dropped for readability); mirror = chrome bar with a highlight streak and shadow; prism = bevelled glass with a glare strip; target = red-and-white bullseye with a slow attention ring, turning green with a check mark when lit; walls = steel with hazard stripes. No text labels. Pieces that are part of the puzzle are locked and show a padlock.
 - **Ramp** (2026-10-16, user feedback: high-school students, introduce the prism at level 1): six levels. 1 Meet the pieces (locked prism turns the beam, the player places one mirror), 2 Glass and mirror (both free, with a wall), 3 Two turns, 4 Over the wall, 5 Prism relay (two prisms), 6 Zigzag (four mirrors, two walls). Every level is test-checked: unsolved at the start, solvable, tolerant to about 1 unit of sloppiness.
 - **Reset** (2026-10-16, user feedback): a Start over button returns to level 1 with no progress; Reset restarts the current level; attract mode resets the puzzle to level 1 for the next student (`Station.onReset`, `stations.resetAll()`).
@@ -120,3 +124,17 @@ All stations at all six viewports, tab bar behaviour in attract mode, memory sta
 Result: switched stations 100 times (60 ms apart): JS heap 4.6 MB to 4.9 MB, 0 console errors or rejections; afterwards the Decades slider, the 16 ms cost readout, the Mirrors canvas and Light Lab (canvas back in its own slot, controls in sync) all work; starting attract mode while on Mirrors switches to Light Lab. Overflow and scroll checked at 1440x900, 1180x820, 1024x768, 820x1180 and 768x1024 for every station with the tab bar showing. Not done here (BOOTH-002): real-finger iPad pass, GPU cost of the feature shading (4x anti-aliasing, 6-ray ambient occlusion, shadow rays) on the Intel MacBook and iPad, 2 h soak.
 
 Verify (original): switch stations 100 times with flat heap; no console errors; overflow check clean.
+
+<!--task
+id: STN-008
+status: done
+epic: mirrors
+deps: [STN-006]
+cl: 3708ed4
+-->
+### STN-008 — Mirrors as a path-traced 3D optical bench
+
+See Decisions. `src/bench.ts` (+ `src/bench.test.ts`, 11 tests: coordinates, shader limits, solids per piece, plane orientation, the laser hitting the first prism at the right distance, white then colored beam segments joining up, target lit only when solved, camera framing the whole board), shader `benchScene` (convex solids by planes, beam cylinders, target pucks, matte steel table with holes, studio environment), `main.ts` uniforms and blend-while-dragging, `ui/bench.ts`. Verified in the browser: the full puzzle solved with real drag gestures on the table (all six pieces moved and turned), target lit; 240 fps / 5,000+ samples in about 20 s on the desktop GPU; no overflow at 1440x900, 1180x820, 1024x768, 820x1180, 768x1024. Screenshot: [solved bench](img/stn-008-bench-solved.jpg). iPad and Intel MacBook speed unmeasured (BOOTH-002).
+
+Verify: as above.
+
