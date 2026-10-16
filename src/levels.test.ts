@@ -79,34 +79,28 @@ describe('the puzzle', () => {
     expect(pieceElements(mirrorPiece)[0].kind).toBe('mirror');
   });
 
-  it('white light is three colors that travel together until glass splits them', () => {
+  it('white light is three colors that travel together, then glass spreads them into one thick rainbow ray', () => {
     const e = evaluate(level, solved(level));
     expect(e.beams).toHaveLength(3);
     const [r, g, b] = e.beams.map((bm) => bm.points);
-    // the first stretch (laser to the first prism, and the bounce inside it) is identical for all three
     for (let i = 0; i < 3; i++) {
       for (const other of [g, b]) {
         expect(other[i][0]).toBeCloseTo(r[i][0], 3);
         expect(other[i][1]).toBeCloseTo(r[i][1], 3);
       }
     }
-    // after the second prism they have fanned out: three different places on the way to the targets
+    // after the second prism the colors have separated a little, but stay together as one band
     const ends = [r, g, b].map((p) => p[p.length - 1]);
-    expect(Math.abs(ends[0][1] - ends[1][1])).toBeGreaterThan(3);
-    expect(Math.abs(ends[1][1] - ends[2][1])).toBeGreaterThan(3);
+    const spread = Math.hypot(ends[0][0] - ends[2][0], ends[0][1] - ends[2][1]);
+    expect(spread).toBeGreaterThan(0.3);
+    expect(spread).toBeLessThan(level.targets[0].r * 2);
   });
 
-  it('each colored target is lit only by its own color: skipping the splitting prism lights none', () => {
+  it('there is one target, and the whole rainbow ray (every color) has to reach it', () => {
+    expect(level.targets).toHaveLength(1);
+    expect(level.targets[0].channel).toBeUndefined();
+    // without the splitting prism the beam misses the target entirely
     const pieces = solved(level).map((p, i, all) => (i === all.length - 1 ? { ...p, pos: [5, 5] as [number, number] } : p));
-    const e = evaluate(level, pieces);
-    expect(e.lit.some(Boolean)).toBe(false);
-  });
-
-  it('the three targets are in a row, red then green then blue, and do not overlap', () => {
-    const ts = level.targets;
-    expect(ts.map((t) => t.channel)).toEqual([0, 1, 2]);
-    for (let i = 1; i < ts.length; i++) {
-      expect(Math.hypot(ts[i].pos[0] - ts[i - 1].pos[0], ts[i].pos[1] - ts[i - 1].pos[1])).toBeGreaterThan(ts[i].r + ts[i - 1].r);
-    }
+    expect(evaluate(level, pieces).won).toBe(false);
   });
 });

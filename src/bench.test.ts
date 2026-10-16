@@ -32,7 +32,7 @@ describe('bench geometry', () => {
       for (const pl of p.planes) expect(Math.hypot(pl[0], pl[1], pl[2])).toBeCloseTo(1, 6);
     }
     expect(s.cyls.length).toBeLessThanOrEqual(CYL_MAX);
-    expect(s.targets).toHaveLength(3);
+    expect(s.targets).toHaveLength(level.targets.length);
   });
 
   it('has a mirror, a glass prism, a wall, a laser and a light for every piece of the puzzle', () => {

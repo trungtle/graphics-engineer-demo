@@ -31,6 +31,20 @@ uniform int u_shadows;      // feature mode: hard shadows from a point light at 
 uniform int u_reflect;      // feature mode: one reflection bounce on shiny things
 uniform int u_ao;           // feature mode: cheap ambient occlusion
 uniform int u_aa;           // feature mode: 4 samples per pixel
+// ---- optical bench (the Mirrors puzzle as a 3D tabletop) ----
+uniform int u_bench;                // 1: draw the bench instead of the Cornell box
+uniform int u_nPoly;
+uniform vec4 u_plane[72];           // 6 planes per solid: normal.xyz, d (inside is dot(n, p) <= d)
+uniform vec4 u_polyA[12];           // rgb albedo (or emission), w = material
+uniform vec4 u_polyB[12];           // x = number of planes, y = kind (1 = hazard stripes)
+uniform int u_nCyl;
+uniform vec4 u_cylA[24];            // a.xyz, radius
+uniform vec4 u_cylB[24];            // b.xyz, palette index
+uniform vec3 u_pal[4];              // beam emission colors
+uniform int u_nTgt;
+uniform vec4 u_tgt[3];              // x, z, radius, lit
+uniform vec3 u_tgtCol[3];
+uniform float u_tgtH;
 out vec4 outColor;
 
 uint rngState;
@@ -67,7 +81,147 @@ void sphere(vec3 ro, vec3 rd, int i, inout Hit h) {
   }
 }
 
+
+// ---- optical bench ----
+bool hitPoly(vec3 ro, vec3 rd, int pi, out float tHit, out vec3 nHit) {
+  int n = int(u_polyB[pi].x + 0.5);
+  float tIn = -1e20;
+  float tOut = 1e20;
+  vec3 nIn = vec3(0.0);
+  vec3 nOut = vec3(0.0);
+  for (int k = 0; k < 6; k++) {
+    if (k >= n) break;
+    vec4 pl = u_plane[pi * 6 + k];
+    float denom = dot(pl.xyz, rd);
+    float dist = pl.w - dot(pl.xyz, ro);
+    if (abs(denom) < 1e-8) {
+      if (dist < 0.0) return false;
+      continue;
+    }
+    float t = dist / denom;
+    if (denom < 0.0) {
+      if (t > tIn) { tIn = t; nIn = pl.xyz; }
+    } else {
+      if (t < tOut) { tOut = t; nOut = pl.xyz; }
+    }
+  }
+  if (tIn > tOut || tOut < 1e-4) return false;
+  if (tIn > 1e-4) { tHit = tIn; nHit = nIn; } else { tHit = tOut; nHit = nOut; }
+  return true;
+}
+
+bool hitBeam(vec3 ro, vec3 rd, vec3 a, vec3 b, float r, out float tHit, out vec3 nHit) {
+  vec3 ba = b - a;
+  vec3 oa = ro - a;
+  float baba = dot(ba, ba);
+  float bard = dot(ba, rd);
+  float baoa = dot(ba, oa);
+  float k2 = baba - bard * bard;
+  if (abs(k2) < 1e-9) return false;
+  float k1 = baba * dot(oa, rd) - baoa * bard;
+  float k0 = baba * dot(oa, oa) - baoa * baoa - r * r * baba;
+  float h = k1 * k1 - k2 * k0;
+  if (h < 0.0) return false;
+  h = sqrt(h);
+  float t = (-k1 - h) / k2;
+  float y = baoa + t * bard;
+  if (t > 1e-4 && y > 0.0 && y < baba) {
+    tHit = t;
+    nHit = normalize(oa + t * rd - ba * y / baba);
+    return true;
+  }
+  return false;
+}
+
+Hit benchScene(vec3 ro, vec3 rd) {
+  Hit h;
+  h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0); h.mat = 0;
+  // the optical table: dark steel with a grid of holes
+  if (rd.y < -1e-5) {
+    float t = -ro.y / rd.y;
+    if (t > 1e-4) {
+      vec3 p = ro + rd * t;
+      vec2 g = mod(p.xz, 0.25) - 0.125;
+      float hole = 1.0 - smoothstep(0.036, 0.046, length(g));
+      h.t = t; h.n = vec3(0.0, 1.0, 0.0); h.mat = 0; // matte steel: lit evenly, so the whole bench reads
+      h.albedo = mix(vec3(0.20, 0.21, 0.24), vec3(0.01), hole);
+    }
+  }
+  // mirrors, glass, walls, laser, light
+  for (int i = 0; i < 12; i++) {
+    if (i >= u_nPoly) break;
+    float t; vec3 n;
+    if (hitPoly(ro, rd, i, t, n) && t < h.t) {
+      vec4 A = u_polyA[i];
+      int mat = int(A.w + 0.5);
+      h.t = t; h.n = n; h.mat = mat; h.albedo = A.rgb;
+      h.emit = mat == 4 ? A.rgb : vec3(0.0);
+      if (int(u_polyB[i].y + 0.5) == 1) {
+        vec3 p = ro + rd * t;
+        h.albedo = mod(floor((p.x + p.z + p.y) * 6.0), 2.0) < 1.0 ? vec3(0.9, 0.62, 0.05) : vec3(0.04);
+      }
+    }
+  }
+  // the beam
+  for (int i = 0; i < 24; i++) {
+    if (i >= u_nCyl) break;
+    float t; vec3 n;
+    if (hitBeam(ro, rd, u_cylA[i].xyz, u_cylB[i].xyz, u_cylA[i].w, t, n) && t < h.t) {
+      h.t = t; h.n = n; h.mat = 4; h.albedo = vec3(0.0);
+      h.emit = u_pal[int(u_cylB[i].w + 0.5)];
+    }
+  }
+  // target pucks with a bullseye on top
+  for (int i = 0; i < 3; i++) {
+    if (i >= u_nTgt) break;
+    vec2 c = u_tgt[i].xy;
+    float R = u_tgt[i].z;
+    bool lit = u_tgt[i].w > 0.5;
+    // top face
+    if (rd.y < 0.0) {
+      float t = (u_tgtH - ro.y) / rd.y;
+      if (t > 1e-4 && t < h.t) {
+        vec3 p = ro + rd * t;
+        float d = length(p.xz - c) / R;
+        if (d <= 1.0) {
+          float ring = mod(floor(d * 5.0), 2.0);
+          vec3 col = ring < 0.5 ? vec3(0.95) : u_tgtCol[i];
+          h.t = t; h.n = vec3(0.0, 1.0, 0.0);
+          if (lit) { h.mat = 4; h.albedo = vec3(0.0); h.emit = (ring < 0.5 ? vec3(0.8, 1.0, 0.85) : vec3(0.25, 1.0, 0.42)) * 2.6; }
+          else { h.mat = 0; h.albedo = col; h.emit = vec3(0.0); }
+        }
+      }
+    }
+    // side wall
+    vec2 oc = ro.xz - c;
+    float a2 = dot(rd.xz, rd.xz);
+    if (a2 > 1e-9) {
+      float b2 = dot(oc, rd.xz);
+      float c2 = dot(oc, oc) - R * R;
+      float disc = b2 * b2 - a2 * c2;
+      if (disc >= 0.0) {
+        float t = (-b2 - sqrt(disc)) / a2;
+        if (t > 1e-4 && t < h.t) {
+          vec3 p = ro + rd * t;
+          if (p.y >= 0.0 && p.y <= u_tgtH) {
+            h.t = t; h.n = normalize(vec3(p.x - c.x, 0.0, p.z - c.y));
+            if (lit) { h.mat = 4; h.albedo = vec3(0.0); h.emit = vec3(0.25, 1.0, 0.42) * 1.2; }
+            else { h.mat = 0; h.albedo = vec3(0.35); h.emit = vec3(0.0); }
+          }
+        }
+      }
+    }
+  }
+  return h;
+}
+
+vec3 benchEnv(vec3 d) {
+  float k = 0.5 + 0.5 * d.y;
+  return mix(vec3(0.012, 0.014, 0.026), vec3(0.075, 0.085, 0.12), k);
+}
+
 Hit scene(vec3 ro, vec3 rd) {
+  if (u_bench == 1) return benchScene(ro, rd);
   Hit h; h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0); h.mat = 0;
   vec3 inv = 1.0 / rd;
   float tx = (rd.x < 0.0 ? -1.0 - ro.x : 1.0 - ro.x) * inv.x;
@@ -213,7 +367,10 @@ void main() {
     for (int i = 0; i <= 8; i++) {
       if (i > u_bounces) break;
       Hit h = scene(ro, rd);
-      if (h.t > 1e19) break;
+      if (h.t > 1e19) {
+        if (u_bench == 1) L += thr * benchEnv(rd);
+        break;
+      }
       L += thr * h.emit;
       if (i == u_bounces || h.mat == 4) break;
       vec3 p = ro + rd * h.t;

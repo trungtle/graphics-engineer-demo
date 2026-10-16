@@ -19,8 +19,8 @@ const MIRROR_H = 0.7;
 const PRISM_H = 0.7;
 const WALL_T = 0.2;
 const WALL_H = 0.9;
-const BEAM_R = 0.028;
-export const TARGET_H = 0.22;
+const BEAM_R = 0.036;
+export const TARGET_H = 0.42;
 
 /** Material numbers shared with the shader (the same ones the path tracer already uses). */
 export const MAT = { diffuse: 0, mirror: 1, glass: 2, metal: 3, emissive: 4 } as const;
@@ -60,12 +60,16 @@ export interface BenchScene {
 
 /** Beam emission colors: 0 = white (all three colors together), 1 red, 2 green, 3 blue. Already scaled to HDR. */
 export const BEAM_PALETTE: Vec3[] = [
-  [18, 16, 12],
-  [26, 3.5, 3.5],
-  [3.5, 26, 3.5],
-  [4, 7, 28],
+  [34, 30, 22],
+  [44, 5, 5],
+  [5, 44, 5],
+  [6, 11, 48],
 ];
-/** Plain channel colors (for the targets). */
+/** Ring color of a plain target (lit by the whole white or rainbow beam). */
+export const TARGET_RING: Vec3 = [0.92, 0.1, 0.16];
+/** Glow color of a lit target. */
+export const TARGET_LIT: Vec3 = [0.25, 1, 0.42];
+/** Plain channel colors (for colored targets). */
 export const CHANNEL_COLORS: Vec3[] = [
   [0.95, 0.12, 0.12],
   [0.1, 0.85, 0.2],
@@ -132,7 +136,7 @@ function prismPoly(p: PieceDef): BenchPoly {
     planes.push([nx, 0, nz, nx * a[0] + nz * a[2]]);
   }
   planes.push([0, 1, 0, PRISM_H], [0, -1, 0, 0]);
-  return { planes, color: [0.96, 0.99, 1], mat: MAT.glass, kind: KIND.plain };
+  return { planes, color: [0.84, 0.94, 1], mat: MAT.glass, kind: KIND.plain };
 }
 
 function wallPoly(a: Vec2, b: Vec2): BenchPoly {
@@ -168,14 +172,14 @@ export function buildBench(level: Level, pieces: PieceDef[], evaluation: Evaluat
   // a big soft light above the bench
   polys.push({
     planes: [
-      [1, 0, 0, 5],
-      [-1, 0, 0, 5],
-      [0, 0, 1, 3.5],
-      [0, 0, -1, 3.5],
+      [1, 0, 0, 7],
+      [-1, 0, 0, 7],
+      [0, 0, 1, 5],
+      [0, 0, -1, 5],
       [0, 1, 0, 8.2],
       [0, -1, 0, -8],
     ],
-    color: [5.5, 5.2, 4.8],
+    color: [2.6, 2.5, 2.3],
     mat: MAT.emissive,
     kind: KIND.plain,
   });
@@ -197,7 +201,7 @@ export function buildBench(level: Level, pieces: PieceDef[], evaluation: Evaluat
 
   const targets: BenchTarget[] = level.targets.slice(0, TARGET_MAX).map((t, i) => {
     const c = puzzleToWorld(t.pos);
-    return { pos: [c[0], c[2]], radius: t.r * S, lit: evaluation.lit[i], color: CHANNEL_COLORS[t.channel ?? 0] };
+    return { pos: [c[0], c[2]], radius: t.r * S, lit: evaluation.lit[i], color: t.channel === undefined ? TARGET_RING : CHANNEL_COLORS[t.channel] };
   });
   return { polys, cyls, targets };
 }

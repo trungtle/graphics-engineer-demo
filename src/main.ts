@@ -17,7 +17,8 @@ import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
 import { initDecades } from './ui/decades';
 import { initBudget } from './ui/budget';
-import { initMirrors } from './ui/mirrors';
+import { initBench } from './ui/bench';
+import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
 import { createStations } from './stations';
 import { ERAS, GI, type Shading } from './shading';
 
@@ -92,6 +93,19 @@ const uTrace = {
   reflect: loc(traceProg, 'u_reflect'),
   ao: loc(traceProg, 'u_ao'),
   aa: loc(traceProg, 'u_aa'),
+  bench: loc(traceProg, 'u_bench'),
+  nPoly: loc(traceProg, 'u_nPoly'),
+  plane: loc(traceProg, 'u_plane'),
+  polyA: loc(traceProg, 'u_polyA'),
+  polyB: loc(traceProg, 'u_polyB'),
+  nCyl: loc(traceProg, 'u_nCyl'),
+  cylA: loc(traceProg, 'u_cylA'),
+  cylB: loc(traceProg, 'u_cylB'),
+  pal: loc(traceProg, 'u_pal'),
+  nTgt: loc(traceProg, 'u_nTgt'),
+  tgt: loc(traceProg, 'u_tgt'),
+  tgtCol: loc(traceProg, 'u_tgtCol'),
+  tgtH: loc(traceProg, 'u_tgtH'),
 };
 const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res'), dim: loc(dispProg, 'u_dim'), off: loc(dispProg, 'u_off') };
 gl.bindVertexArray(gl.createVertexArray());
@@ -102,10 +116,27 @@ let cur = 0;
 let rw = 0;
 let rh = 0;
 let frame = 0;
-let scale = Number(params.get('scale') ?? '1');
+// Render at normal screen resolution by default: on retina screens and iPads the device has 2-4x the pixels,
+// which a path tracer cannot afford. The canvas itself stays full resolution so overlays are crisp.
+let scale = Number(params.get('scale') ?? String(1 / Math.min(window.devicePixelRatio || 1, 2)));
 const scene = defaultScene();
 // How the main picture is shaded. Light Lab always uses the path tracer; other stations change this.
 let shading: Shading = GI;
+
+// The Mirrors station draws a 3D tabletop instead of the Cornell box. `bench` is null everywhere else.
+let bench: BenchScene | null = null;
+let benchLiveUntil = 0; // while a piece is being dragged, blend frames instead of restarting so it does not flash noisy
+let benchWasLive = false;
+const benchData = {
+  plane: new Float32Array(POLY_MAX * 6 * 4),
+  polyA: new Float32Array(POLY_MAX * 4),
+  polyB: new Float32Array(POLY_MAX * 4),
+  cylA: new Float32Array(CYL_MAX * 4),
+  cylB: new Float32Array(CYL_MAX * 4),
+  pal: new Float32Array(4 * 3),
+  tgt: new Float32Array(TARGET_MAX * 4),
+  tgtCol: new Float32Array(TARGET_MAX * 3),
+};
 
 // First-person "photon's view": a small second render of the box from the photon's position.
 const FP_W = 160;
@@ -401,12 +432,13 @@ stations.register({
   onLeave: budget.onLeave,
 });
 
-const mirrors = initMirrors();
+const mirrors = initBench({ setBench });
 stations.register({
   id: 'mirrors',
   label: 'Mirrors',
   icon: '<path d="M4 20L20 4"/><path d="M3 9h7M14 13l4 0"/>',
   root: document.getElementById('st-mirrors')!,
+  viewportSlot: document.getElementById('slot-mirrors')!,
   onEnter: mirrors.onEnter,
   onLeave: mirrors.onLeave,
   onReset: mirrors.reset,
@@ -427,13 +459,54 @@ const idle = initIdle({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading, setBench, bench: mirrors };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
 let last = performance.now();
 let gpuMs = NaN;
 let query: WebGLQuery | null = null;
+
+function setBench(b: BenchScene | null, live = false) {
+  bench = b;
+  if (live) benchLiveUntil = performance.now() + 450;
+  else reset();
+}
+
+function uploadBench(b: BenchScene | null) {
+  gl.uniform1i(uTrace.bench, b ? 1 : 0);
+  if (!b) return;
+  const d = benchData;
+  b.polys.forEach((p, i) => {
+    for (let k = 0; k < 6; k++) {
+      const pl = p.planes[k] ?? [0, 0, 0, 0];
+      d.plane.set(pl, (i * 6 + k) * 4);
+    }
+    d.polyA.set([p.color[0], p.color[1], p.color[2], p.mat], i * 4);
+    d.polyB.set([p.planes.length, p.kind, 0, 0], i * 4);
+  });
+  b.cyls.forEach((c, i) => {
+    d.cylA.set([c.a[0], c.a[1], c.a[2], c.radius], i * 4);
+    d.cylB.set([c.b[0], c.b[1], c.b[2], c.color], i * 4);
+  });
+  BEAM_PALETTE.forEach((c, i) => d.pal.set(c, i * 3));
+  b.targets.forEach((t, i) => {
+    d.tgt.set([t.pos[0], t.pos[1], t.radius, t.lit ? 1 : 0], i * 4);
+    d.tgtCol.set(t.color, i * 3);
+  });
+  gl.uniform1i(uTrace.nPoly, b.polys.length);
+  gl.uniform4fv(uTrace.plane, d.plane);
+  gl.uniform4fv(uTrace.polyA, d.polyA);
+  gl.uniform4fv(uTrace.polyB, d.polyB);
+  gl.uniform1i(uTrace.nCyl, b.cyls.length);
+  gl.uniform4fv(uTrace.cylA, d.cylA);
+  gl.uniform4fv(uTrace.cylB, d.cylB);
+  gl.uniform3fv(uTrace.pal, d.pal);
+  gl.uniform1i(uTrace.nTgt, b.targets.length);
+  gl.uniform4fv(uTrace.tgt, d.tgt);
+  gl.uniform3fv(uTrace.tgtCol, d.tgtCol);
+  gl.uniform1f(uTrace.tgtH, TARGET_H);
+}
 
 function tracePass(
   src: Target,
@@ -464,6 +537,7 @@ function tracePass(
   gl.uniform1i(uTrace.reflect, fx.reflections ? 1 : 0);
   gl.uniform1i(uTrace.ao, fx.ao ? 1 : 0);
   gl.uniform1i(uTrace.aa, fx.aa ? 1 : 0);
+  uploadBench(bench);
   gl.uniform1i(uTrace.bounces, scene.bounces);
   gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
   gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
@@ -533,7 +607,16 @@ function tick(now: number) {
   }
 
   // deterministic raster-era looks replace the picture every frame; the path tracer accumulates
-  tracePass(targets[cur], targets[1 - cur], rw, rh, frame, shading.mode === 'features' ? 1 : 0, cameraOf(scene), 0.45, false, shading);
+  if (bench) {
+    // the bench is a free-standing scene: its own camera, no front opening, always path traced
+    const live = now < benchLiveUntil;
+    if (benchWasLive && !live) reset();
+    benchWasLive = live;
+    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, live ? 0.18 : 0, benchCamera(), BENCH_TH, true, GI);
+  } else {
+    benchWasLive = false;
+    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, shading.mode === 'features' ? 1 : 0, cameraOf(scene), 0.45, false, shading);
+  }
   raysTotal += rw * rh * (scene.bounces + 1);
   if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);
   cur = 1 - cur;

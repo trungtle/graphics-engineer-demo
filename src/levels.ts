@@ -15,7 +15,7 @@ export interface PieceDef {
 export interface Level {
   name: string;
   laser: { pos: Vec2; angle: number };
-  /** `channel`: which color of the beam lights it (0 red, 1 green, 2 blue); unset = any */
+  /** `channel`: which color of the beam lights it (0 red, 1 green, 2 blue); unset = all colors (white light) must reach it */
   targets: { pos: Vec2; r: number; channel?: number }[];
   blockers: { a: Vec2; b: Vec2 }[];
   /** where the pieces start */
@@ -39,19 +39,15 @@ const prism = (x: number, y: number, a = 0, fixed = false): PieceDef => ({
 
 /**
  * One puzzle, and a hard one. The white beam has to be turned down by a prism, carried across and over a wall by
- * four mirrors, and then sent through a second prism that splits it into red, green and blue (glass bends each
- * color a different amount). Each colored target is lit only by its own color.
+ * four mirrors, and then sent through a second prism that spreads it into a thick rainbow ribbon (glass bends each
+ * color a slightly different amount). The whole ribbon has to land on the one target.
  * The 2D engine in optics.ts decides where the light goes; the 3D bench only draws it.
  */
 export const LEVELS: Level[] = [
   {
     name: 'The bench',
     laser: { pos: [6, 50], angle: 0 },
-    targets: [
-      { pos: [75, 12], r: 2.4, channel: 0 },
-      { pos: [75, 17], r: 2.4, channel: 1 },
-      { pos: [75, 23], r: 2.4, channel: 2 },
-    ],
+    targets: [{ pos: [75, 15], r: 3.5 }],
     blockers: [
       { a: [45, 0], b: [45, 35] },
       { a: [58, 60], b: [58, 46] },
@@ -69,14 +65,13 @@ export const LEVELS: Level[] = [
 ];
 
 /**
- * White light is three beams (red, green, blue) that travel together until glass bends them by different amounts.
- * The numbers are exaggerated on purpose so the rainbow is easy to see; all three still bounce inside a
- * 45-degree prism (the critical angle of the weakest, 1.42, is just under 45 degrees).
+ * White light is three beams (red, green, blue) that travel together until glass bends them by slightly different
+ * amounts. The spread is kept small on purpose, so after a prism they stay together as one thick rainbow ray.
  */
 export const BEAMS: { ior: number; color: [number, number, number] }[] = [
-  { ior: 1.42, color: [255, 70, 70] },
-  { ior: 1.58, color: [70, 255, 70] },
-  { ior: 1.78, color: [70, 110, 255] },
+  { ior: 1.475, color: [255, 70, 70] },
+  { ior: 1.5, color: [70, 255, 70] },
+  { ior: 1.525, color: [70, 110, 255] },
 ];
 
 /** The optical elements for a piece. */
@@ -104,18 +99,20 @@ export function evaluate(level: Level, pieces: PieceDef[]): Evaluation {
   for (const p of pieces) base.push(...pieceElements(p));
 
   const dir: Vec2 = [Math.cos(level.laser.angle), Math.sin(level.laser.angle)];
-  const lit = level.targets.map(() => false);
+  const hitBy = level.targets.map(() => new Set<number>());
   const beams = BEAMS.map((b, bi) => {
-    // a colored target only stops (and counts) its own color; the other colors pass through it
+    // a colored target only stops its own color; a plain target stops every color
     const mine: number[] = [];
     level.targets.forEach((t, ti) => {
       if (t.channel === undefined || t.channel === bi) mine.push(ti);
     });
     const elements: Element[] = [...base, ...mine.map((ti): Element => ({ kind: 'target', pos: level.targets[ti].pos, r: level.targets[ti].r }))];
     const r = traceBeam(level.laser.pos, dir, elements, ARENA, { ior: b.ior });
-    for (const h of r.hits) lit[mine[h - base.length]] = true;
+    for (const h of r.hits) hitBy[mine[h - base.length]].add(bi);
     return { points: r.points, color: b.color };
   });
+  // a colored target needs its color; a plain one needs all of the white light
+  const lit = level.targets.map((t, ti) => (t.channel === undefined ? hitBy[ti].size === BEAMS.length : hitBy[ti].has(t.channel)));
   return { beams, lit, won: lit.every(Boolean) };
 }
 

@@ -108,7 +108,7 @@ html, body {
 .tab[aria-selected='true'] { background: var(--ink); color: #fff; }
 .tab:active { transform: scale(0.97); }
 
-.viewport-slot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.viewport-slot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
 
 #stage, .stage-card {
   grid-area: stage;
@@ -556,18 +556,13 @@ body.idle #explain strong { color: var(--ink); }
 }
 
 /* ---- mirrors puzzle ---- */
-.board { position: relative; flex: 1 1 0; min-height: 0; background: #000; }
-#mirror-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.stage-card > .board { flex: 1 1 0; }
-.lvl-head { display: flex; align-items: baseline; gap: var(--s-2); margin-bottom: var(--s-2); }
-.lvl-num { font-size: calc(var(--fs-h1) * 1.4); font-weight: 800; line-height: 1; }
-.lvl-of { font-size: var(--fs-body); font-weight: 650; color: var(--muted); }
-.lvl-name { margin-left: auto; font-size: var(--fs-body); font-weight: 650; color: var(--muted); text-align: right; }
-.lvl-dots { display: flex; gap: var(--s-2); margin-bottom: var(--s-3); }
-.lvl-dots i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); background: transparent; }
-.lvl-dots i.cur { border-color: var(--ink); }
-.lvl-dots i.done { background: #16a34a; border-color: #16a34a; }
 .lvl-actions { display: flex; gap: var(--s-2); }
 .lvl-actions .btn { flex: 1; margin-left: 0; padding: 0 var(--s-3); }
 .btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
 .btn:disabled { opacity: 0.35; cursor: default; }
+
+/* the 3D bench: handles, selection and the soft beam glow are drawn on a 2D canvas over the GL picture */
+#bench-overlay { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; display: block; touch-action: none; }
+.chan-dots { display: flex; gap: var(--s-3); margin: var(--s-2) 0 var(--s-3); }
+.chan-dots i { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); background: transparent; transition: background 0.2s, box-shadow 0.2s; }
+.chan-dots i.on { box-shadow: 0 0 12px var(--cc); background: var(--cc); border-color: var(--cc); }
