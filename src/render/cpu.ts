@@ -1,7 +1,8 @@
 // CPU mirror of the GPU path tracer's scene intersection and scattering.
-// Keep in sync with TRACE_FRAG in shaders.ts (camera, room, spheres, materials).
+// Keep in sync with TRACE_FRAG in shaders.ts (camera, room, spheres, the mesh via bvh.ts, materials).
 // Used for tap-picking and for recording one light path for "Be a photon".
 import type { SceneState } from '../scene';
+import { intersectBvh } from '../bvh';
 
 export type Vec3 = [number, number, number];
 
@@ -146,6 +147,15 @@ export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null 
     best = { t, p, n, surface, objectIndex: -1, mat: 0, albedo, emissive };
   }
 
+  if (scene.mesh) {
+    // the model replaces the balls and wears object 0's material (shaders.ts meshHit)
+    const mh = intersectBvh(scene.mesh.bvh, ro, rd, best ? best.t : Infinity);
+    if (mh) {
+      const o = scene.objects[0];
+      best = { t: mh.t, p: add(ro, mul(rd, mh.t)), n: mh.n, surface: 'object', objectIndex: 0, mat: o.mat, albedo: o.color, emissive: o.mat === 4 };
+    }
+    return best;
+  }
   scene.objects.forEach((o, i) => {
     const oc = sub(ro, o.pos);
     const b = dot(oc, rd);

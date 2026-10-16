@@ -1,3 +1,6 @@
+import type { Bvh } from './bvh';
+import type { ModelId } from './mesh';
+
 export const MATERIALS = ['diffuse', 'mirror', 'glass', 'metal', 'glowing'] as const;
 export type MaterialId = 0 | 1 | 2 | 3 | 4;
 
@@ -24,6 +27,8 @@ export interface SceneState {
   light: LightState;
   /** orbit camera angles in radians (0,0 = straight on) */
   camera: { yaw: number; pitch: number };
+  /** a triangle model (bunny, dragon) standing in for the balls; it takes object 0's color and material. null = the balls */
+  mesh: { id: Exclude<ModelId, 'balls'>; bvh: Bvh } | null;
 }
 
 export const LIGHT_REF_HALF = 0.3;
@@ -65,6 +70,7 @@ export function defaultScene(): SceneState {
     ],
     light: { x: 0, z: 0, half: LIGHT_REF_HALF, color: [...LIGHT_COLORS[0].rgb] },
     camera: { yaw: 0, pitch: 0 },
+    mesh: null,
   };
 }
 
@@ -75,4 +81,5 @@ export function resetScene(s: SceneState): void {
   d.objects.forEach((o, i) => Object.assign(s.objects[i], o));
   Object.assign(s.light, d.light);
   Object.assign(s.camera, d.camera);
+  s.mesh = null;
 }

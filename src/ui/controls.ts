@@ -1,5 +1,12 @@
 import { clampLight, LIGHT_COLORS, LIGHT_MAX_HALF, LIGHT_MIN_HALF, type SceneState } from '../scene';
 import type { Term } from './equation';
+import type { ModelId } from '../mesh';
+
+const MODELS: { id: ModelId; name: string }[] = [
+  { id: 'balls', name: 'Balls' },
+  { id: 'bunny', name: 'Bunny' },
+  { id: 'dragon', name: 'Dragon' },
+];
 
 export function formatCount(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 0 : 1)} billion`;
@@ -15,6 +22,8 @@ export interface Controls {
   syncBounces(): void;
   /** Re-read the lamp size/color into the controls. */
   syncLamp(): void;
+  /** Re-read which model is shown into the picker. */
+  syncModel(): void;
   /** Big attract-mode caption in the caption bar (null restores the normal hint). Normal captions are ignored while idle. */
   idleCaption(text: string | null): void;
 }
@@ -23,6 +32,7 @@ export function initControls(opts: {
   scene: SceneState;
   reset: () => void;
   onTerm?: (t: Term) => void;
+  onModel?: (id: ModelId) => void;
 }): Controls {
   const root = document.getElementById('controls')!;
   root.innerHTML = `
@@ -30,6 +40,9 @@ export function initControls(opts: {
       <div class="stat t-int"><span class="stat-num" id="spp">0</span><span class="stat-lab">samples per pixel</span></div>
       <div class="stat t-int"><span class="stat-num" id="rays">0</span><span class="stat-lab">rays traced</span></div>
       <button id="restart" class="btn" type="button">Restart</button>
+    </div>
+    <div class="seg" role="radiogroup" aria-label="Model">
+      ${MODELS.map((m) => `<button class="seg-btn" type="button" role="radio" data-model="${m.id}">${m.name}</button>`).join('')}
     </div>
     <div class="ctl-block">
       <div class="ctl-head"><span class="ctl-title t-li">Light bounces</span><span class="ctl-val t-li" id="bval"></span></div>
@@ -98,6 +111,24 @@ export function initControls(opts: {
   );
   syncLamp();
 
+  const modelBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('.seg-btn'));
+  const paintModel = (id: ModelId) =>
+    modelBtns.forEach((b) => {
+      const on = b.dataset.model === id;
+      b.setAttribute('aria-checked', String(on));
+      b.classList.toggle('on', on);
+    });
+  const syncModel = () => paintModel(opts.scene.mesh?.id ?? 'balls');
+  modelBtns.forEach((b) =>
+    b.addEventListener('click', () => {
+      const id = b.dataset.model as ModelId;
+      paintModel(id); // right away, even while the model is still loading
+      opts.onModel?.(id);
+      opts.onTerm?.('fr');
+    }),
+  );
+  syncModel();
+
   // Explanations live in a caption bar under the picture (never over the render).
   const explainEl = document.getElementById('explain')!;
   const isIdle = () => document.body.classList.contains('idle');
@@ -112,6 +143,7 @@ export function initControls(opts: {
   return {
     syncBounces,
     syncLamp,
+    syncModel,
     idleCaption(text) {
       if (text === null) {
         setHint();

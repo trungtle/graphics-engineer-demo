@@ -43,6 +43,7 @@ export function initIdle(opts: {
   const syncUi = () => {
     ui.syncBounces();
     ui.syncLamp();
+    ui.syncModel();
   };
 
   function start() {

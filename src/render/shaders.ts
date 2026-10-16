@@ -45,6 +45,10 @@ uniform int u_nTgt;
 uniform vec4 u_tgt[3];              // x, z, radius, lit
 uniform vec3 u_tgtCol[3];
 uniform float u_tgtH;
+// ---- triangle mesh (bunny, dragon): replaces the three balls, uses object 0's color and material ----
+uniform int u_mesh;
+uniform highp sampler2D u_bvh;      // 2 texels per node: (min, a), (max, b); leaf: a = first tri, b = count; inner: a = right child
+uniform highp sampler2D u_tri;      // 6 texels per triangle: v0, e1, e2, n0, n1, n2
 out vec4 outColor;
 
 uint rngState;
@@ -81,6 +85,80 @@ void sphere(vec3 ro, vec3 rd, int i, inout Hit h) {
   }
 }
 
+// ---- triangle mesh: BVH walk (same as intersectBvh in bvh.ts) ----
+vec4 texAt(highp sampler2D s, int i) { return texelFetch(s, ivec2(i & 2047, i >> 11), 0); }
+
+float boxT(vec3 ro, vec3 inv, int node) {
+  vec3 a = (texAt(u_bvh, node * 2).xyz - ro) * inv;
+  vec3 b = (texAt(u_bvh, node * 2 + 1).xyz - ro) * inv;
+  vec3 lo = min(a, b);
+  vec3 hi = max(a, b);
+  float tn = max(max(lo.x, lo.y), lo.z);
+  float tf = min(min(hi.x, hi.y), hi.z);
+  return tf >= max(tn, 0.0) ? tn : 1e30;
+}
+
+void meshHit(vec3 ro, vec3 rd, inout Hit h) {
+  vec3 inv = 1.0 / rd;
+  float best = h.t;
+  if (boxT(ro, inv, 0) >= best) return;
+  int stack[32];
+  int sp = 0;
+  int node = 0;
+  int bestTri = -1;
+  float bu = 0.0, bv = 0.0;
+  for (int iter = 0; iter < 2048; iter++) {
+    vec4 A = texAt(u_bvh, node * 2);
+    int cnt = int(texAt(u_bvh, node * 2 + 1).w + 0.5);
+    if (cnt > 0) {
+      int first = int(A.w + 0.5);
+      for (int ti = first; ti < first + cnt; ti++) {
+        int q = ti * 6;
+        vec3 e1 = texAt(u_tri, q + 1).xyz;
+        vec3 e2 = texAt(u_tri, q + 2).xyz;
+        vec3 pv = cross(rd, e2);
+        float det = dot(e1, pv);
+        if (abs(det) < 1e-12) continue;
+        float id = 1.0 / det;
+        vec3 tv = ro - texAt(u_tri, q).xyz;
+        float u = dot(tv, pv) * id;
+        if (u < 0.0 || u > 1.0) continue;
+        vec3 qv = cross(tv, e1);
+        float v = dot(rd, qv) * id;
+        if (v < 0.0 || u + v > 1.0) continue;
+        float t = dot(e2, qv) * id;
+        if (t > 1e-4 && t < best) { best = t; bestTri = ti; bu = u; bv = v; }
+      }
+      if (sp == 0) break;
+      node = stack[--sp];
+    } else {
+      int l = node + 1;
+      int r = int(A.w + 0.5);
+      float tl = boxT(ro, inv, l);
+      float tr = boxT(ro, inv, r);
+      bool hl = tl < best;
+      bool hr = tr < best;
+      if (hl && hr) {
+        if (tl <= tr) { node = l; stack[sp++] = r; } else { node = r; stack[sp++] = l; }
+      } else if (hl) node = l;
+      else if (hr) node = r;
+      else { if (sp == 0) break; node = stack[--sp]; }
+    }
+  }
+  if (bestTri < 0) return;
+  int q = bestTri * 6;
+  vec3 g = normalize(cross(texAt(u_tri, q + 1).xyz, texAt(u_tri, q + 2).xyz));
+  vec3 n = (1.0 - bu - bv) * texAt(u_tri, q + 3).xyz + bu * texAt(u_tri, q + 4).xyz + bv * texAt(u_tri, q + 5).xyz;
+  n = dot(n, n) > 1e-16 ? normalize(n) : g;
+  // a smooth normal that disagrees with the real surface about which side the ray is on would leak light
+  if (dot(n, rd) * dot(g, rd) <= 0.0) n = g;
+  h.t = best;
+  h.n = n;
+  h.albedo = u_objCol[0].rgb;
+  int m = u_objMat[0];
+  h.mat = m;
+  h.emit = m == 4 ? u_objCol[0].rgb * EMISSIVE_OBJ : vec3(0.0);
+}
 
 // ---- optical bench ----
 bool hitPoly(vec3 ro, vec3 rd, int pi, out float tHit, out vec3 nHit) {
@@ -246,7 +324,8 @@ Hit scene(vec3 ro, vec3 rd) {
       h.albedo = vec3(0.78);
     }
   }
-  for (int i = 0; i < 3; i++) sphere(ro, rd, i, h);
+  if (u_mesh == 1) meshHit(ro, rd, h);
+  else for (int i = 0; i < 3; i++) sphere(ro, rd, i, h);
   return h;
 }
 

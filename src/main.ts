@@ -20,6 +20,8 @@ import { initBudget } from './ui/budget';
 import { initBench } from './ui/bench';
 import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
 import { createStations } from './stations';
+import { loadMesh, modelBvh, type ModelId } from './mesh';
+import { textureData, type Bvh } from './bvh';
 import { ERAS, GI, type Shading } from './shading';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
@@ -106,6 +108,9 @@ const uTrace = {
   tgt: loc(traceProg, 'u_tgt'),
   tgtCol: loc(traceProg, 'u_tgtCol'),
   tgtH: loc(traceProg, 'u_tgtH'),
+  mesh: loc(traceProg, 'u_mesh'),
+  bvh: loc(traceProg, 'u_bvh'),
+  tri: loc(traceProg, 'u_tri'),
 };
 const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res'), dim: loc(dispProg, 'u_dim'), off: loc(dispProg, 'u_off') };
 gl.bindVertexArray(gl.createVertexArray());
@@ -137,6 +142,62 @@ const benchData = {
   tgt: new Float32Array(TARGET_MAX * 4),
   tgtCol: new Float32Array(TARGET_MAX * 3),
 };
+
+// Triangle models: one BVH per model, built on first use and kept; the GPU copy lives in two float textures.
+const bvhCache = new Map<Exclude<ModelId, 'balls'>, Bvh>();
+let modelWanted: ModelId = 'balls';
+function floatTexture(data: Float32Array | null): WebGLTexture {
+  gl.activeTexture(gl.TEXTURE3); // a spare unit, so uploading never disturbs the bound accumulation texture
+  const tex = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const t = data ? textureData(data) : { data: new Float32Array(4), width: 1, height: 1 };
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, t.width, t.height, 0, gl.RGBA, gl.FLOAT, t.data);
+  gl.activeTexture(gl.TEXTURE0);
+  return tex;
+}
+const meshTex = { bvh: floatTexture(null), tri: floatTexture(null), of: null as Bvh | null };
+function bindMesh() {
+  const b = scene.mesh?.bvh ?? null;
+  if (b && meshTex.of !== b) {
+    gl.deleteTexture(meshTex.bvh);
+    gl.deleteTexture(meshTex.tri);
+    meshTex.bvh = floatTexture(b.nodes);
+    meshTex.tri = floatTexture(b.tris);
+    meshTex.of = b;
+  }
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, meshTex.bvh);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, meshTex.tri);
+  gl.uniform1i(uTrace.bvh, 1);
+  gl.uniform1i(uTrace.tri, 2);
+  gl.uniform1i(uTrace.mesh, b && !bench ? 1 : 0);
+  gl.activeTexture(gl.TEXTURE0);
+}
+
+/** Show the balls, the bunny or the dragon. Models load (and their BVH is built) the first time they are picked. */
+async function setModel(id: ModelId): Promise<void> {
+  modelWanted = id;
+  if (id === 'balls') {
+    scene.mesh = null;
+    ui.syncModel();
+    reset();
+    return;
+  }
+  let bvh = bvhCache.get(id);
+  if (!bvh) {
+    bvh = modelBvh(await loadMesh(id), id);
+    bvhCache.set(id, bvh);
+  }
+  if (modelWanted !== id) return; // another model was picked while this one loaded
+  scene.mesh = { id, bvh };
+  ui.syncModel();
+  reset();
+}
 
 // First-person "photon's view": a small second render of the box from the photon's position.
 const FP_W = 160;
@@ -228,7 +289,7 @@ const reset = () => {
   photon?.clear();
 };
 const eq = initEquation();
-const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t) });
+const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t), onModel: (id) => void setModel(id) });
 photon = initPhoton({
   stage: document.getElementById('viewport')!,
   view: canvas,
@@ -407,6 +468,7 @@ stations.register({
     setShading(GI);
     ui.syncBounces();
     ui.syncLamp();
+    ui.syncModel();
   },
   onLeave: () => photon?.setEnabled(false),
 });
@@ -459,7 +521,7 @@ const idle = initIdle({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading, setBench, bench: mirrors };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading, setBench, bench: mirrors, setModel };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
@@ -538,6 +600,7 @@ function tracePass(
   gl.uniform1i(uTrace.ao, fx.ao ? 1 : 0);
   gl.uniform1i(uTrace.aa, fx.aa ? 1 : 0);
   uploadBench(bench);
+  bindMesh();
   gl.uniform1i(uTrace.bounces, scene.bounces);
   gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
   gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));

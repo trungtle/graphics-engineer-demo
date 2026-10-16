@@ -1,5 +1,6 @@
 // Triangle meshes for the bunny and the dragon. The files are made by scripts/convert-mesh.mjs.
 import type { Vec3 } from './render/cpu';
+import { buildBvh, placeMesh, type Bvh, type Placement } from './bvh';
 
 export interface Mesh {
   vertexCount: number;
@@ -90,4 +91,19 @@ export async function loadMesh(id: Exclude<ModelId, 'balls'>): Promise<Mesh> {
   const res = await fetch(`${import.meta.env.BASE_URL}${MODEL_FILES[id]}`);
   if (!res.ok) throw new Error(`could not load ${id}: ${res.status}`);
   return parseMesh(await res.arrayBuffer());
+}
+
+/**
+ * Where each model stands in the Cornell box (floor y = -1, walls at +-1): base on the floor, centered, scaled to
+ * about the size of the three balls together, turned to face the camera.
+ */
+export const MODEL_PLACEMENT: Record<Exclude<ModelId, 'balls'>, Placement> = {
+  bunny: { scale: 1.15, yaw: 0.5, offset: [0, -1, 0.05] },
+  dragon: { scale: 1.6, yaw: 0, offset: [0, -1, 0.05] },
+};
+
+/** The placed model's BVH, ready for the shader and the CPU picker. */
+export function modelBvh(mesh: Mesh, id: Exclude<ModelId, 'balls'>): Bvh {
+  const { positions, normals } = placeMesh(mesh, MODEL_PLACEMENT[id]);
+  return buildBvh(positions, normals, mesh.indices);
 }

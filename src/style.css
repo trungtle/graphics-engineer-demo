@@ -244,6 +244,23 @@ h2 {
 }
 .btn:active { background: var(--bg); transform: scale(0.97); }
 
+/* model picker: Balls / Bunny / Dragon */
+.seg { display: flex; padding: 3px; gap: 3px; border: 2px solid var(--line); border-radius: 999px; background: var(--surface); }
+.seg-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: calc(var(--tap) - 10px);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 600 var(--fs-body) / 1 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.seg-btn.on { background: var(--c-fr); color: #fff; }
+.seg-btn:active { transform: scale(0.97); }
+
 .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
 .ctl-title { font-weight: 650; font-size: var(--fs-body); }
 .ctl-val { font-weight: 700; font-size: calc(var(--fs-body) * 1.4); font-variant-numeric: tabular-nums; }
