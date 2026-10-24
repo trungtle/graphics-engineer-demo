@@ -1,5 +1,5 @@
 import type { Bvh } from './bvh';
-import type { ModelId } from './mesh';
+import type { MeshModelId } from './mesh';
 
 export const MATERIALS = ['diffuse', 'mirror', 'glass', 'metal', 'glowing'] as const;
 export type MaterialId = 0 | 1 | 2 | 3 | 4;
@@ -28,7 +28,7 @@ export interface SceneState {
   /** orbit camera angles in radians (0,0 = straight on) */
   camera: { yaw: number; pitch: number };
   /** a triangle model (bunny, dragon) standing in for the balls; it takes object 0's color and material. null = the balls */
-  mesh: { id: Exclude<ModelId, 'balls'>; bvh: Bvh } | null;
+  mesh: { id: MeshModelId; bvh: Bvh } | null;
 }
 
 export const LIGHT_REF_HALF = 0.3;

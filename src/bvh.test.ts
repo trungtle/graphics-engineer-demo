@@ -4,6 +4,16 @@ import { intersectBvh, MAX_DEPTH, placeMesh, textureData, TEX_W, type Bvh } from
 import { MODEL_PLACEMENT, modelBvh, parseMesh, type Mesh } from './mesh';
 import { mulberry32, type Vec3 } from './render/cpu';
 
+/** Some ray straight down onto the model (Bob is a ring, so a ray through the middle can miss). */
+function downHit(bvh: Bvh): { ro: Vec3; rd: Vec3 } {
+  const rd: Vec3 = [0, -1, 0];
+  for (let x = 0; x < 0.9; x += 0.05) {
+    const ro: Vec3 = [x, 0.95, (bvh.bboxMin[2] + bvh.bboxMax[2]) / 2];
+    if (intersectBvh(bvh, ro, rd)) return { ro, rd };
+  }
+  throw new Error('no ray hits the model');
+}
+
 const load = (name: string): Mesh => {
   const b = readFileSync(`public/models/${name}.bin`);
   return parseMesh(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
@@ -35,7 +45,7 @@ function bruteForce(mesh: Mesh, positions: Float32Array, ro: Vec3, rd: Vec3): nu
   return best;
 }
 
-describe.each(['bunny', 'dragon'] as const)('%s BVH', (name) => {
+describe.each(['bunny', 'dragon', 'spot', 'bob', 'blub'] as const)('%s BVH', (name) => {
   const mesh = load(name);
   const t0 = performance.now();
   const bvh: Bvh = modelBvh(mesh, name);
@@ -69,8 +79,8 @@ describe.each(['bunny', 'dragon'] as const)('%s BVH', (name) => {
     expect(Array.from(seen).every((s) => s === 1)).toBe(true);
   });
 
-  it('stands on the floor inside the box', () => {
-    expect(bvh.bboxMin[1]).toBeCloseTo(-1, 3);
+  it('stands on the floor (or floats where it is placed) inside the box', () => {
+    expect(bvh.bboxMin[1]).toBeCloseTo(MODEL_PLACEMENT[name].offset[1], 3);
     for (let k = 0; k < 3; k++) {
       if (k !== 1) expect(bvh.bboxMin[k]).toBeGreaterThan(-0.95);
       expect(bvh.bboxMax[k]).toBeLessThan(0.95);
@@ -100,8 +110,7 @@ describe.each(['bunny', 'dragon'] as const)('%s BVH', (name) => {
   });
 
   it('respects the max distance (for shadow rays)', () => {
-    const ro: Vec3 = [0, -0.6, 0.95];
-    const rd: Vec3 = [0, 0, -1];
+    const { ro, rd } = downHit(bvh);
     const h = intersectBvh(bvh, ro, rd);
     expect(h).not.toBeNull();
     expect(intersectBvh(bvh, ro, rd, h!.t * 0.99)).toBeNull();
@@ -113,5 +122,26 @@ describe.each(['bunny', 'dragon'] as const)('%s BVH', (name) => {
     expect(n.width).toBe(TEX_W);
     expect(n.data.length).toBe(n.width * n.height * 4);
     expect(t.height).toBe(Math.ceil((bvh.triangleCount * 6) / TEX_W));
+  });
+});
+
+describe('character colors', () => {
+  it.each(['spot', 'bob', 'blub'] as const)('%s has a baked color per vertex, and hits return it', (name) => {
+    const mesh = load(name);
+    expect(mesh.colors).not.toBeNull();
+    expect(mesh.colors!.length).toBe(mesh.vertexCount * 3);
+    const bvh = modelBvh(mesh, name);
+    const { ro, rd } = downHit(bvh);
+    const h = intersectBvh(bvh, ro, rd);
+    expect(h).not.toBeNull();
+    for (const c of h!.color!) {
+      expect(c).toBeGreaterThanOrEqual(0);
+      expect(c).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('plain models have no color', () => {
+    const bvh = modelBvh(load('bunny'), 'bunny');
+    expect(intersectBvh(bvh, [0, -0.6, 0.95], [0, 0, -1])!.color).toBeNull();
   });
 });

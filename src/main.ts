@@ -15,12 +15,10 @@ import { initControls } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
-import { initDecades } from './ui/decades';
-import { initBudget } from './ui/budget';
 import { initBench } from './ui/bench';
 import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
 import { createStations } from './stations';
-import { loadMesh, modelBvh, type ModelId } from './mesh';
+import { loadMesh, modelBvh, type MeshModelId, type ModelId } from './mesh';
 import { textureData, type Bvh } from './bvh';
 import { ERAS, GI, type Shading } from './shading';
 
@@ -144,7 +142,7 @@ const benchData = {
 };
 
 // Triangle models: one BVH per model, built on first use and kept; the GPU copy lives in two float textures.
-const bvhCache = new Map<Exclude<ModelId, 'balls'>, Bvh>();
+const bvhCache = new Map<MeshModelId, Bvh>();
 let modelWanted: ModelId = 'balls';
 function floatTexture(data: Float32Array | null): WebGLTexture {
   gl.activeTexture(gl.TEXTURE3); // a spare unit, so uploading never disturbs the bound accumulation texture
@@ -471,27 +469,6 @@ stations.register({
     ui.syncModel();
   },
   onLeave: () => photon?.setEnabled(false),
-});
-
-const decades = initDecades({ scene, reset, setShading });
-stations.register({
-  id: 'decades',
-  label: 'Decades',
-  icon: '<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',
-  root: document.getElementById('st-decades')!,
-  viewportSlot: document.getElementById('slot-decades')!,
-  onEnter: decades.onEnter,
-});
-
-const budget = initBudget({ scene, reset, setShading });
-stations.register({
-  id: 'budget',
-  label: '16 ms',
-  icon: '<circle cx="12" cy="13" r="7"/><path d="M12 9v4l2 2M9 3h6"/>',
-  root: document.getElementById('st-budget')!,
-  viewportSlot: document.getElementById('slot-budget')!,
-  onEnter: budget.onEnter,
-  onLeave: budget.onLeave,
 });
 
 const mirrors = initBench({ setBench });

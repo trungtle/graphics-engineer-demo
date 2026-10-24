@@ -155,9 +155,20 @@ void meshHit(vec3 ro, vec3 rd, inout Hit h) {
   h.t = best;
   h.n = n;
   h.albedo = u_objCol[0].rgb;
+  // characters carry their baked texture color in the w of each corner normal (packed sRGB, -1 = none)
+  vec3 cw = vec3(texAt(u_tri, q + 3).w, texAt(u_tri, q + 4).w, texAt(u_tri, q + 5).w);
+  if (cw.x >= 0.0) {
+    vec3 bary = vec3(1.0 - bu - bv, bu, bv);
+    vec3 col = vec3(0.0);
+    for (int k = 0; k < 3; k++) {
+      int p = int(cw[k] + 0.5);
+      col += bary[k] * pow(vec3(float(p >> 16), float((p >> 8) & 255), float(p & 255)) / 255.0, vec3(2.2));
+    }
+    h.albedo = col;
+  }
   int m = u_objMat[0];
   h.mat = m;
-  h.emit = m == 4 ? u_objCol[0].rgb * EMISSIVE_OBJ : vec3(0.0);
+  h.emit = m == 4 ? h.albedo * EMISSIVE_OBJ : vec3(0.0);
 }
 
 // ---- optical bench ----

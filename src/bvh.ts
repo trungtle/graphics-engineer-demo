@@ -18,7 +18,10 @@ export interface Bvh {
   nodeCount: number;
   /** per node, 8 floats: min.xyz, a, max.xyz, b. Leaf: a = first triangle, b = count (> 0). Inner: a = right child, b = 0; the left child is the next node. */
   nodes: Float32Array;
-  /** per triangle (in leaf order), 24 floats: v0, e1 = v1 - v0, e2 = v2 - v0, n0, n1, n2 (each xyz + 1 padding) */
+  /**
+   * per triangle (in leaf order), 24 floats: v0, e1 = v1 - v0, e2 = v2 - v0, n0, n1, n2 (each xyz + w).
+   * The w of n0, n1, n2 holds that corner's sRGB color packed as r * 65536 + g * 256 + b (exact in a float), or -1.
+   */
   tris: Float32Array;
   bboxMin: Vec3;
   bboxMax: Vec3;
@@ -73,7 +76,12 @@ const area = (mn: Vec3, mx: Vec3) => {
 };
 
 /** Binned-SAH BVH over the triangles. */
-export function buildBvh(positions: Float32Array, normals: Float32Array, indices: Uint16Array | Uint32Array): Bvh {
+export function buildBvh(
+  positions: Float32Array,
+  normals: Float32Array,
+  indices: Uint16Array | Uint32Array,
+  colors: Uint8Array | null = null,
+): Bvh {
   const triCount = indices.length / 3;
   const tmin = new Float32Array(triCount * 3);
   const tmax = new Float32Array(triCount * 3);
@@ -245,6 +253,7 @@ export function buildBvh(positions: Float32Array, normals: Float32Array, indices
       tris[o + 16 + k] = normals[ib + k];
       tris[o + 20 + k] = normals[ic + k];
     }
+    [ia, ib, ic].forEach((v, c) => (tris[o + 15 + c * 4] = colors ? colors[v] * 65536 + colors[v + 1] * 256 + colors[v + 2] : -1));
   }
   return { triangleCount: triCount, nodeCount, nodes, tris, bboxMin: root.min, bboxMax: root.max, depth };
 }
@@ -272,6 +281,8 @@ function boxT(ro: Vec3, inv: Vec3, nodes: Float32Array, o: number): number {
 
 export interface MeshHit {
   t: number;
+  /** interpolated baked color (linear), or null when the model has none */
+  color: Vec3 | null;
   /** shading normal (interpolated), on the same side of the surface as the geometric normal relative to the ray */
   n: Vec3;
   tri: number;
@@ -341,7 +352,19 @@ export function intersectBvh(bvh: Bvh, ro: Vec3, rd: Vec3, tMax = Infinity): Mes
     }
   }
   if (bestTri < 0) return null;
-  return { t: best, n: shadingNormal(bvh, bestTri, bu, bv, rd), tri: bestTri };
+  return { t: best, n: shadingNormal(bvh, bestTri, bu, bv, rd), tri: bestTri, color: cornerColor(bvh, bestTri, bu, bv) };
+}
+
+/** sRGB byte to linear, the same curve as the shader. */
+const toLinear = (b: number) => Math.pow(b / 255, 2.2);
+
+function cornerColor(bvh: Bvh, tri: number, u: number, v: number): Vec3 | null {
+  const q = tri * 24;
+  const w = [bvh.tris[q + 15], bvh.tris[q + 19], bvh.tris[q + 23]];
+  if (w[0] < 0) return null;
+  const rgb = w.map((p): Vec3 => [toLinear(Math.floor(p / 65536)), toLinear(Math.floor(p / 256) % 256), toLinear(p % 256)]);
+  const a = 1 - u - v;
+  return [0, 1, 2].map((k) => a * rgb[0][k] + u * rgb[1][k] + v * rgb[2][k]) as Vec3;
 }
 
 function shadingNormal(bvh: Bvh, tri: number, u: number, v: number, rd: Vec3): Vec3 {

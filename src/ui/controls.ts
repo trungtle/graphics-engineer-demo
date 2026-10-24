@@ -6,6 +6,9 @@ const MODELS: { id: ModelId; name: string }[] = [
   { id: 'balls', name: 'Balls' },
   { id: 'bunny', name: 'Bunny' },
   { id: 'dragon', name: 'Dragon' },
+  { id: 'spot', name: 'Spot' },
+  { id: 'bob', name: 'Bob' },
+  { id: 'blub', name: 'Blub' },
 ];
 
 export function formatCount(n: number): string {

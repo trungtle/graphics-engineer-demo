@@ -152,7 +152,8 @@ export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null 
     const mh = intersectBvh(scene.mesh.bvh, ro, rd, best ? best.t : Infinity);
     if (mh) {
       const o = scene.objects[0];
-      best = { t: mh.t, p: add(ro, mul(rd, mh.t)), n: mh.n, surface: 'object', objectIndex: 0, mat: o.mat, albedo: o.color, emissive: o.mat === 4 };
+      const albedo = mh.color ?? o.color;
+      best = { t: mh.t, p: add(ro, mul(rd, mh.t)), n: mh.n, surface: 'object', objectIndex: 0, mat: o.mat, albedo, emissive: o.mat === 4 };
     }
     return best;
   }

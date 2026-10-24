@@ -79,7 +79,7 @@ html, body {
 @media (orientation: portrait) {
   .station {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 60fr) minmax(0, 40fr);
+    grid-template-rows: minmax(0, 57fr) minmax(0, 43fr);
     grid-template-areas:
       'stage'
       'panel';
@@ -244,8 +244,8 @@ h2 {
 }
 .btn:active { background: var(--bg); transform: scale(0.97); }
 
-/* model picker: Balls / Bunny / Dragon */
-.seg { display: flex; padding: 3px; gap: 3px; border: 2px solid var(--line); border-radius: 999px; background: var(--surface); }
+/* model picker: Balls / Bunny / Dragon / Spot / Bob / Blub, two rows of three */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; gap: 3px; border: 2px solid var(--line); border-radius: 18px; background: var(--surface); }
 .seg-btn {
   flex: 1 1 0;
   min-width: 0;
@@ -259,6 +259,10 @@ h2 {
   cursor: pointer;
 }
 .seg-btn.on { background: var(--c-fr); color: #fff; }
+/* portrait panels are wide: all six models on one row */
+@media (orientation: portrait) {
+  .seg { grid-template-columns: repeat(6, 1fr); border-radius: 999px; }
+}
 .seg-btn:active { transform: scale(0.97); }
 
 .ctl-head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -393,7 +397,7 @@ h2 {
 @media (orientation: portrait) and (max-height: 1100px) {
   #panel, .panel-col { gap: var(--s-3); }
   #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
-  .station { gap: var(--s-3); }
+  .station { gap: var(--s-3); grid-template-rows: minmax(0, 55fr) minmax(0, 45fr); }
   #tabs { margin-top: var(--s-3); }
 }
 

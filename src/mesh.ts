@@ -14,12 +14,18 @@ export interface Mesh {
   indices: Uint16Array;
   /** smooth normals, xyz per vertex */
   normals: Float32Array;
+  /** baked texture color per vertex (sRGB bytes, rgb), for the characters; null for plain models */
+  colors: Uint8Array | null;
 }
 
-export type ModelId = 'balls' | 'bunny' | 'dragon';
-export const MODEL_FILES: Record<Exclude<ModelId, 'balls'>, string> = {
+export type ModelId = 'balls' | 'bunny' | 'dragon' | 'spot' | 'bob' | 'blub';
+export type MeshModelId = Exclude<ModelId, 'balls'>;
+export const MODEL_FILES: Record<MeshModelId, string> = {
   bunny: 'models/bunny.bin',
   dragon: 'models/dragon.bin',
+  spot: 'models/spot.bin',
+  bob: 'models/bob.bin',
+  blub: 'models/blub.bin',
 };
 
 const HEADER_BYTES = 4 + 4 + 4 + 24;
@@ -59,7 +65,7 @@ export function computeNormals(positions: Float32Array, indices: Uint16Array): F
 export function parseMesh(buf: ArrayBuffer): Mesh {
   const view = new DataView(buf);
   const magic = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
-  if (magic !== 'MSH1') throw new Error('not a mesh file');
+  if (magic !== 'MSH1' && magic !== 'MSH2') throw new Error('not a mesh file');
   const vertexCount = view.getUint32(4, true);
   const triangleCount = view.getUint32(8, true);
   const f = (k: number) => view.getFloat32(12 + k * 4, true);
@@ -75,6 +81,8 @@ export function parseMesh(buf: ArrayBuffer): Mesh {
   }
   const indices = new Uint16Array(triangleCount * 3);
   for (let t = 0; t < indices.length; t++, o += 2) indices[t] = view.getUint16(o, true);
+  // MSH2: a baked texture color per vertex follows the indices
+  const colors = magic === 'MSH2' ? new Uint8Array(buf.slice(o, o + vertexCount * 3)) : null;
 
   return {
     vertexCount,
@@ -84,10 +92,11 @@ export function parseMesh(buf: ArrayBuffer): Mesh {
     positions,
     indices,
     normals: computeNormals(positions, indices),
+    colors,
   };
 }
 
-export async function loadMesh(id: Exclude<ModelId, 'balls'>): Promise<Mesh> {
+export async function loadMesh(id: MeshModelId): Promise<Mesh> {
   const res = await fetch(`${import.meta.env.BASE_URL}${MODEL_FILES[id]}`);
   if (!res.ok) throw new Error(`could not load ${id}: ${res.status}`);
   return parseMesh(await res.arrayBuffer());
@@ -97,13 +106,17 @@ export async function loadMesh(id: Exclude<ModelId, 'balls'>): Promise<Mesh> {
  * Where each model stands in the Cornell box (floor y = -1, walls at +-1): base on the floor, centered, scaled to
  * about the size of the three balls together, turned to face the camera.
  */
-export const MODEL_PLACEMENT: Record<Exclude<ModelId, 'balls'>, Placement> = {
+export const MODEL_PLACEMENT: Record<MeshModelId, Placement> = {
   bunny: { scale: 1.15, yaw: 0.5, offset: [0, -1, 0.05] },
   dragon: { scale: 1.6, yaw: 0, offset: [0, -1, 0.05] },
+  spot: { scale: 1.25, yaw: 2.54, offset: [0, -1, 0.05] },
+  bob: { scale: 1.75, yaw: 0.4, offset: [0, -1, 0.05] },
+  // the fish swims in mid-air
+  blub: { scale: 1.4, yaw: 0.6, offset: [0, -0.75, 0.05] },
 };
 
 /** The placed model's BVH, ready for the shader and the CPU picker. */
-export function modelBvh(mesh: Mesh, id: Exclude<ModelId, 'balls'>): Bvh {
+export function modelBvh(mesh: Mesh, id: MeshModelId): Bvh {
   const { positions, normals } = placeMesh(mesh, MODEL_PLACEMENT[id]);
-  return buildBvh(positions, normals, mesh.indices);
+  return buildBvh(positions, normals, mesh.indices, mesh.colors);
 }
