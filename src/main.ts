@@ -16,6 +16,7 @@ import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initIdle } from './idle';
 import { initBench } from './ui/bench';
+import { initFluid } from './ui/fluid';
 import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
 import { createStations } from './stations';
 import { loadMesh, modelBvh, type MeshModelId, type ModelId } from './mesh';
@@ -489,6 +490,17 @@ stations.register({
   onReset: mirrors.reset,
 });
 
+const water = initFluid();
+stations.register({
+  id: 'fluid',
+  label: 'Water',
+  icon: '<path d="M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M3 15c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/>',
+  root: document.getElementById('st-fluid')!,
+  onEnter: water.onEnter,
+  onLeave: water.onLeave,
+  onReset: water.reset,
+});
+
 const idle = initIdle({
   onStart: () => {
     stations.resetAll();
@@ -504,7 +516,7 @@ const idle = initIdle({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading, setBench, bench: mirrors, setModel };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading, setBench, bench: mirrors, setModel, water };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
