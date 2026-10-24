@@ -1,4 +1,4 @@
-import { clampLight, LIGHT_COLORS, LIGHT_MAX_HALF, LIGHT_MIN_HALF, type SceneState } from '../scene';
+import { clampLight, LIGHT_COLORS, LIGHT_MAX_HALF, LIGHT_MIN_HALF, setLights, type LightSetup, type SceneState } from '../scene';
 import type { Term } from './equation';
 import type { ModelId } from '../mesh';
 
@@ -52,7 +52,11 @@ export function initControls(opts: {
       <input id="bounces" class="slider" type="range" min="0" max="8" step="1" aria-label="Light bounces" />
     </div>
     <div class="ctl-block lamp">
-      <div class="ctl-head"><span class="ctl-title t-le">Lamp</span></div>
+      <div class="ctl-head"><span class="ctl-title t-le">Lamp</span>
+        <div class="seg seg-mini" role="radiogroup" aria-label="Number of lamps">
+          ${[1, 2, 3].map((n) => `<button class="seg-btn lamps-btn" type="button" role="radio" data-n="${n}" aria-label="${n} lamp${n > 1 ? 's' : ''}">${'<i></i>'.repeat(n)}</button>`).join('')}
+        </div>
+      </div>
       <div class="lamp-row">
         <div class="swatches" role="radiogroup" aria-label="Lamp color">
           ${LIGHT_COLORS.map((c, i) => `<button class="swatch" type="button" role="radio" data-i="${i}" aria-label="${c.name}" style="--sw:${c.swatch}"></button>`).join('')}
@@ -85,7 +89,13 @@ export function initControls(opts: {
 
   const lsize = root.querySelector<HTMLInputElement>('#lampsize')!;
   const swatches = Array.from(root.querySelectorAll<HTMLButtonElement>('.swatch'));
+  const lampBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('.lamps-btn'));
   const syncLamp = () => {
+    lampBtns.forEach((b) => {
+      const on = Number(b.dataset.n) === opts.scene.lights.length;
+      b.setAttribute('aria-checked', String(on));
+      b.classList.toggle('on', on);
+    });
     const l = opts.scene.light;
     lsize.value = String(Math.round(l.half * 100));
     const frac = (l.half - LIGHT_MIN_HALF) / (LIGHT_MAX_HALF - LIGHT_MIN_HALF);
@@ -97,6 +107,14 @@ export function initControls(opts: {
       b.classList.toggle('on', on);
     });
   };
+  lampBtns.forEach((b) =>
+    b.addEventListener('click', () => {
+      setLights(opts.scene, Number(b.dataset.n) as LightSetup);
+      syncLamp();
+      opts.reset();
+      opts.onTerm?.('le');
+    }),
+  );
   lsize.addEventListener('input', () => {
     opts.scene.light.half = Number(lsize.value) / 100;
     clampLight(opts.scene.light);
@@ -114,7 +132,7 @@ export function initControls(opts: {
   );
   syncLamp();
 
-  const modelBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('.seg-btn'));
+  const modelBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('.seg-btn[data-model]'));
   const paintModel = (id: ModelId) =>
     modelBtns.forEach((b) => {
       const on = b.dataset.model === id;

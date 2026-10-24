@@ -1,4 +1,4 @@
-import { LIGHT_COLORS, resetScene, type MaterialId, type SceneState } from './scene';
+import { LIGHT_COLORS, resetScene, setLights, type MaterialId, type SceneState } from './scene';
 import { formatCount, type Controls } from './ui/controls';
 import type { Equation } from './ui/equation';
 import type { Photon } from './ui/photon';
@@ -169,6 +169,15 @@ export function initIdle(opts: {
         await wait(3300);
       }
       scene.light.x = lampX0;
+      // three colored lamps: colored shadows
+      setLights(scene, 3);
+      ui.syncLamp();
+      opts.reset();
+      eq.highlight('le', 3000);
+      await wait(4500);
+      setLights(scene, 1);
+      ui.syncLamp();
+      opts.reset();
 
       // 5. A photon's journey, first person
       say('Be a photon: follow one ray of light');

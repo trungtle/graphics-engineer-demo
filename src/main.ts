@@ -80,6 +80,9 @@ const uTrace = {
   objMat: loc(traceProg, 'u_objMat'),
   light: loc(traceProg, 'u_light'),
   lightCol: loc(traceProg, 'u_lightCol'),
+  nLights: loc(traceProg, 'u_nLights'),
+  lights: loc(traceProg, 'u_lights'),
+  lightCols: loc(traceProg, 'u_lightCols'),
   camPos: loc(traceProg, 'u_camPos'),
   camRight: loc(traceProg, 'u_camRight'),
   camUp: loc(traceProg, 'u_camUp'),
@@ -357,6 +360,9 @@ canvas.addEventListener('pointerdown', (e) => {
     lampDz: 0,
   };
   if (h?.surface === 'light') {
+    // the touched lamp becomes the one the color swatches and size slider change
+    scene.light = scene.lights[h.objectIndex] ?? scene.light;
+    ui.syncLamp();
     const c = ceilingPoint(nx, ny, aspect, cameraOf(scene));
     if (c) {
       d.mode = 'lamp';
@@ -582,8 +588,13 @@ function tracePass(
   gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
   gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
   gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
-  gl.uniform4f(uTrace.light, scene.light.x, scene.light.z, 0, scene.light.half);
-  gl.uniform3fv(uTrace.lightCol, lightRadiance(scene.light));
+  const L0 = scene.lights[0];
+  gl.uniform4f(uTrace.light, L0.x, L0.z, 0, L0.half);
+  gl.uniform3fv(uTrace.lightCol, lightRadiance(L0));
+  const lamps = [0, 1, 2].map((i) => scene.lights[Math.min(i, scene.lights.length - 1)]);
+  gl.uniform1i(uTrace.nLights, scene.lights.length);
+  gl.uniform4fv(uTrace.lights, lamps.flatMap((l) => [l.x, l.z, 0, l.half]));
+  gl.uniform3fv(uTrace.lightCols, lamps.flatMap((l) => lightRadiance(l)));
   gl.uniform3fv(uTrace.camPos, cam.pos);
   gl.uniform3fv(uTrace.camRight, cam.right);
   gl.uniform3fv(uTrace.camUp, cam.up);

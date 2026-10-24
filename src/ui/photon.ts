@@ -34,10 +34,16 @@ export function classify(path: PathSegment[]): Outcome {
   return 'object';
 }
 
+/** The lamp a path ends on (the selected lamp when it ends elsewhere). */
+export function pathLamp(path: PathSegment[], scene: SceneState) {
+  const last = path[path.length - 1];
+  return last?.event === 'light' && last.objectIndex >= 0 ? scene.lights[last.objectIndex] ?? scene.light : scene.light;
+}
+
 /** Linear RGB this photon brings back to the pixel: lamp radiance times every surface color on the way. */
 export function pathColor(path: PathSegment[], scene: SceneState): Vec3 {
   if (classify(path) !== 'light') return [0, 0, 0];
-  const L = lightRadiance(scene.light);
+  const L = lightRadiance(pathLamp(path, scene));
   let r = L[0];
   let g = L[1];
   let b = L[2];
@@ -197,15 +203,15 @@ export function initPhoton(opts: {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  const lampHue = (): Vec3 => {
-    const L = lightRadiance(scene.light);
+  const lampHue = (path: PathSegment[]): Vec3 => {
+    const L = lightRadiance(pathLamp(path, scene));
     const m = Math.max(L[0], L[1], L[2]);
     return [L[0] / m, L[1] / m, L[2] / m];
   };
 
   /** Photon glow color: the lamp's hue, tinted by each surface it bounced off. */
   function buildTints(path: PathSegment[]): Vec3[] {
-    let c = lampHue();
+    let c = lampHue(path);
     const out: Vec3[] = [c];
     for (const seg of path) {
       if (seg.event !== 'light' && seg.event !== 'escaped') {

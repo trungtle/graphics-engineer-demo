@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultScene } from '../scene';
+import { defaultScene, setLights } from '../scene';
 import { ceilingPoint, cameraOf, makeCamera, pick, project, recordPath } from './cpu';
 
 const ASPECT = 1.25;
@@ -129,5 +129,18 @@ describe('orbit camera and lamp', () => {
     expect(pick(x, y, ASPECT, s)?.surface).toBe('light');
     const [x0, y0] = project([-0.5, 1, 0], ASPECT, cameraOf(s));
     expect(pick(x0, y0, ASPECT, s)?.surface).not.toBe('light');
+  });
+});
+
+describe('several lamps', () => {
+  it('each lamp is picked as light, with its own index', () => {
+    const s = defaultScene();
+    setLights(s, 3);
+    s.lights.forEach((l, i) => {
+      const [x, y] = project([l.x, 1, l.z], ASPECT, cameraOf(s));
+      const h = pick(x, y, ASPECT, s);
+      expect(h?.surface).toBe('light');
+      expect(h?.objectIndex).toBe(i);
+    });
   });
 });

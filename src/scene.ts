@@ -24,6 +24,9 @@ export interface LightState {
 export interface SceneState {
   bounces: number;
   objects: SphereObj[];
+  /** every lamp on the ceiling (1 to MAX_LIGHTS) */
+  lights: LightState[];
+  /** the lamp the controls change (always one of `lights`; the last one tapped or dragged) */
   light: LightState;
   /** orbit camera angles in radians (0,0 = straight on) */
   camera: { yaw: number; pitch: number };
@@ -32,6 +35,7 @@ export interface SceneState {
 }
 
 export const LIGHT_REF_HALF = 0.3;
+export const MAX_LIGHTS = 3;
 export const LIGHT_MIN_HALF = 0.12;
 export const LIGHT_MAX_HALF = 0.42;
 export const CAMERA_YAW_LIMIT = 0.5;
@@ -60,7 +64,47 @@ export function clampLight(l: LightState): void {
   l.z = Math.min(lim, Math.max(-lim, l.z));
 }
 
+export type LightSetup = 1 | 2 | 3;
+
+/**
+ * Ready-made lamp setups: one warm lamp; a warm and a cool lamp; red, green and blue lamps (they add up to white
+ * where all three reach, and every object casts three colored shadows).
+ */
+export function lightSetup(n: LightSetup): LightState[] {
+  const c = (i: number) => [...LIGHT_COLORS[i].rgb] as [number, number, number];
+  if (n === 1) return [{ x: 0, z: 0, half: LIGHT_REF_HALF, color: c(0) }];
+  if (n === 2)
+    return [
+      { x: -0.5, z: 0, half: 0.22, color: c(0) },
+      { x: 0.5, z: 0, half: 0.22, color: c(1) },
+    ];
+  return [
+    { x: -0.5, z: -0.25, half: 0.2, color: c(2) },
+    { x: 0.5, z: -0.25, half: 0.2, color: [5, 22, 5] },
+    { x: 0, z: 0.45, half: 0.2, color: c(3) },
+  ];
+}
+
+/** Switch the ceiling to a setup. The first lamp keeps its object identity (other modules may hold it). */
+export function setLights(s: SceneState, n: LightSetup): void {
+  const [first, ...rest] = lightSetup(n);
+  const keep = s.lights[0];
+  Object.assign(keep, first);
+  s.lights = [keep, ...rest];
+  s.light = keep;
+}
+
+/** The lamp under ceiling point (x, z), or -1. Later lamps win where they overlap (same rule as the shader). */
+export function lampAt(lights: LightState[], x: number, z: number): number {
+  for (let i = lights.length - 1; i >= 0; i--) {
+    const l = lights[i];
+    if (Math.abs(x - l.x) < l.half && Math.abs(z - l.z) < l.half) return i;
+  }
+  return -1;
+}
+
 export function defaultScene(): SceneState {
+  const lights = lightSetup(1);
   return {
     bounces: 4,
     objects: [
@@ -68,7 +112,8 @@ export function defaultScene(): SceneState {
       { pos: [0.5, -0.72, 0.3], radius: 0.28, color: [0.85, 0.7, 0.2], mat: 3 },
       { pos: [0.05, -0.8, 0.55], radius: 0.2, color: [1, 1, 1], mat: 2 },
     ],
-    light: { x: 0, z: 0, half: LIGHT_REF_HALF, color: [...LIGHT_COLORS[0].rgb] },
+    lights,
+    light: lights[0],
     camera: { yaw: 0, pitch: 0 },
     mesh: null,
   };
@@ -79,7 +124,7 @@ export function resetScene(s: SceneState): void {
   const d = defaultScene();
   s.bounces = d.bounces;
   d.objects.forEach((o, i) => Object.assign(s.objects[i], o));
-  Object.assign(s.light, d.light);
+  setLights(s, 1);
   Object.assign(s.camera, d.camera);
   s.mesh = null;
 }

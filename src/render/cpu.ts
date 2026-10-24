@@ -1,7 +1,7 @@
 // CPU mirror of the GPU path tracer's scene intersection and scattering.
 // Keep in sync with TRACE_FRAG in shaders.ts (camera, room, spheres, the mesh via bvh.ts, materials).
 // Used for tap-picking and for recording one light path for "Be a photon".
-import type { SceneState } from '../scene';
+import { lampAt, type SceneState } from '../scene';
 import { intersectBvh } from '../bvh';
 
 export type Vec3 = [number, number, number];
@@ -38,7 +38,7 @@ export interface CpuHit {
   p: Vec3;
   n: Vec3; // geometric normal as in the shader (may face away from the ray)
   surface: Surface;
-  objectIndex: number; // -1 unless surface === 'object'
+  objectIndex: number; // which ball for 'object', which lamp for 'light', else -1
   mat: number;
   albedo: Vec3;
   emissive: boolean;
@@ -125,6 +125,7 @@ export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null 
     let surface: Surface;
     let albedo: Vec3;
     let emissive = false;
+    let lamp = -1;
     if (t === tx) {
       n = [-Math.sign(rd[0]), 0, 0];
       surface = rd[0] < 0 ? 'left' : 'right';
@@ -133,18 +134,19 @@ export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null 
       n = [0, -Math.sign(rd[1]), 0];
       surface = rd[1] > 0 ? 'ceiling' : 'floor';
       albedo = [0.78, 0.78, 0.78];
-      const L = scene.light;
-      if (rd[1] > 0 && Math.abs(p[0] - L.x) < L.half && Math.abs(p[2] - L.z) < L.half) {
+      const li = rd[1] > 0 ? lampAt(scene.lights, p[0], p[2]) : -1;
+      if (li >= 0) {
         surface = 'light';
         emissive = true;
         albedo = [0, 0, 0];
+        lamp = li;
       }
     } else {
       n = [0, 0, 1];
       surface = 'back';
       albedo = [0.78, 0.78, 0.78];
     }
-    best = { t, p, n, surface, objectIndex: -1, mat: 0, albedo, emissive };
+    best = { t, p, n, surface, objectIndex: lamp, mat: 0, albedo, emissive };
   }
 
   if (scene.mesh) {

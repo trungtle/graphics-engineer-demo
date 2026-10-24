@@ -16,8 +16,11 @@ uniform int u_bounces;
 uniform vec4 u_objPos[3];   // xyz center, w radius
 uniform vec4 u_objCol[3];   // rgb color
 uniform int u_objMat[3];
-uniform vec4 u_light;       // x, z center, w half-size (y fixed at ceiling)
-uniform vec3 u_lightCol;    // emitted radiance
+uniform vec4 u_light;       // the first lamp: x, z center, w half-size (y fixed at ceiling); used by feature shading
+uniform vec3 u_lightCol;    // the first lamp's emitted radiance
+uniform int u_nLights;      // ceiling lamps (1 to 3); later lamps win where they overlap
+uniform vec4 u_lights[3];
+uniform vec3 u_lightCols[3];
 uniform vec3 u_camPos;
 uniform vec3 u_camRight;
 uniform vec3 u_camUp;
@@ -327,8 +330,12 @@ Hit scene(vec3 ro, vec3 rd) {
     } else if (t == ty) {
       h.n = vec3(0.0, -sign(rd.y), 0.0);
       h.albedo = vec3(0.78);
-      if (rd.y > 0.0 && abs(p.x - u_light.x) < u_light.w && abs(p.z - u_light.y) < u_light.w) {
-        h.emit = u_lightCol; h.albedo = vec3(0.0);
+      if (rd.y > 0.0) {
+        for (int i = 0; i < 3; i++) {
+          if (i >= u_nLights) break;
+          vec4 Ls = u_lights[i];
+          if (abs(p.x - Ls.x) < Ls.w && abs(p.z - Ls.y) < Ls.w) { h.emit = u_lightCols[i]; h.albedo = vec3(0.0); }
+        }
       }
     } else {
       h.n = vec3(0.0, 0.0, 1.0);

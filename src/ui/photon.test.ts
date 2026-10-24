@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cameraOf, project, recordPath } from '../render/cpu';
-import { defaultScene, lightRadiance } from '../scene';
+import { cameraOf, project, recordPath, type Vec3 } from '../render/cpu';
+import { defaultScene, lightRadiance, setLights } from '../scene';
 import { classify, pathColor, samplePaths, summarize, toDisplay } from './photon';
 
 const ASPECT = 1.25;
@@ -103,5 +103,16 @@ describe('all samples of a pixel', () => {
       return Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / vals.length);
     };
     expect(spread(512)).toBeLessThan(spread(16));
+  });
+});
+
+describe('photon color with several lamps', () => {
+  it('a photon that ends on a lamp brings back that lamp’s color', () => {
+    const s = defaultScene();
+    setLights(s, 3);
+    s.lights.forEach((l, i) => {
+      const path = [{ from: [0, 0, 0] as Vec3, to: [l.x, 1, l.z] as Vec3, surface: 'light' as const, objectIndex: i, event: 'light' as const, cos: 1, albedo: [0, 0, 0] as Vec3 }];
+      expect(pathColor(path, s)).toEqual(lightRadiance(l));
+    });
   });
 });

@@ -259,6 +259,12 @@ h2 {
   cursor: pointer;
 }
 .seg-btn.on { background: var(--c-fr); color: #fff; }
+/* lamp count: 1, 2 or 3 little lamp marks, beside the Lamp title */
+.ctl-head .seg-mini { display: flex; border-radius: 999px; padding: 2px; gap: 2px; }
+.seg-mini .seg-btn { flex: 0 0 auto; min-height: 34px; min-width: 56px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.seg-mini .seg-btn i { display: block; width: 9px; height: 9px; border-radius: 2px; background: var(--c-le); }
+.seg-mini .seg-btn.on i { background: #fff; }
+.seg-mini .seg-btn.on { background: var(--c-le); }
 /* portrait panels are wide: all six models on one row */
 @media (orientation: portrait) {
   .seg { grid-template-columns: repeat(6, 1fr); border-radius: 999px; }
