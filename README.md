@@ -2,9 +2,10 @@
 
 An interactive demo for high-school students at a career fair: how a computer paints with light. It runs in the browser (WebGL2, no server) and is hosted on GitHub Pages.
 
-Two stations on one tab bar:
+Three stations on one tab bar:
 
-- **Light Lab**: a live path tracer. Change bounces, materials and the lamp, swap the balls for the Stanford bunny, the Stanford dragon or one of three characters (Spot, Bob, Blub), follow a single photon, trace all of a pixel's sample paths.
+- **Light Lab**: a live path tracer. Change bounces, materials and the lamp, swap the balls for the Stanford bunny, the Stanford dragon or one of three characters (Spot, Bob, Blub), light it with one, two or three lamps, follow a single photon, trace all of a pixel's sample paths.
+- **Water**: a FLIP fluid simulation in a tank (the particles-plus-grid method used for film water). Stir it, tilt it, splash it, and look at its particles and grid.
 - **Mirrors**: a laser puzzle on a path-traced 3D optical bench: mirrors, glass prisms, and white light that glass spreads into a rainbow.
 
 ## Run it

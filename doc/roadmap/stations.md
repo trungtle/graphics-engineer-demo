@@ -6,6 +6,8 @@ The first two stations share one renderer: the GL path tracer gains a set of on/
 
 ## Decisions
 
+- **Water station added** (2026-10-23, user: "a new tab, running fluid simulation in a tank"): a 2D FLIP simulation on the CPU drawn on a 2D canvas (no GL). It runs on any device and needs no second GL context. Interactions: drag to stir with a ball, a tilt slider (the tank turns on screen and the water stays level), Splash, Reset. Views: Water, Particles, Grid. No explanatory text; readouts only.
+
 - **Decades and 16 ms tabs removed** (2026-10-23, user): the app now has two stations, Light Lab and Mirrors. STN-002..004 stay recorded as done; their code is unwired but kept in the repo (delete it only if the user asks).
 
 - **Mirrors is now a 3D optical bench** (2026-10-16, user: "full 3D version", `3708ed4`): the puzzle is drawn by the path tracer as a real tabletop: perforated steel optical table, chrome mirror slabs, glass prisms, hazard-striped walls, a steel laser with a glowing lens, a target puck, a large soft light overhead. The game logic stays the exact 2D engine (`optics.ts`, `levels.ts`); `src/bench.ts` turns the puzzle state into convex solids (planes), emissive beam cylinders and target pucks for the shader (`u_bench`), and `src/ui/bench.ts` handles touch by casting the finger ray onto the table plane, plus a 2D overlay for the turn handle, the selection outline and a soft beam glow. While a piece is dragged, frames are blended instead of restarted so the picture does not flash noisy; on release it converges cleanly. The old 2D canvas view (`ui/mirrors.ts`) is removed.
@@ -139,3 +141,16 @@ cl: 3708ed4
 See Decisions. `src/bench.ts` (+ `src/bench.test.ts`, 12 tests: coordinates, shader limits, solids per piece, plane orientation, the laser hitting the first prism at the right distance, white then colored beam segments joining up, target lit only when solved, camera framing the whole board at three aspect ratios, camera below the overhead light), shader `benchScene` (convex solids by planes, beam cylinders, target pucks, matte steel table with holes, studio environment), `main.ts` bench uniforms and blend-while-dragging, `src/ui/bench.ts` (touch on the table plane, turn handle, outline, beam glow). Verified in the browser: the full puzzle solved with real drag gestures on the table (all six pieces moved and turned) and the target lit; 240 fps and 5,000+ samples in about 20 s on the desktop GPU; no overflow at 1440x900, 1180x820, 1024x768, 820x1180, 768x1024. Screenshot: [solved bench](img/stn-008-bench-solved.jpg). iPad and Intel MacBook speed unmeasured (BOOTH-002).
 
 Verify: as above.
+
+<!--task
+id: STN-009
+status: done
+epic: water
+deps: [STN-001]
+cl: ffd385f
+-->
+### STN-009 — Water: FLIP fluid in a tank
+
+`src/fluid.ts` (`Flip`): particles plus a 72x45 staggered grid; each step moves the particles, separates them with a spatial hash, handles the walls and the stirring ball, transfers velocities to the grid, then runs 50 Gauss-Seidel pressure iterations with drift compensation, and transfers back with a FLIP ratio of 0.9. The tank starts as a dam break of 2,640 particles. Tests: 7 in `src/fluid.test.ts` (dam breaks and stays in the tank, nothing lost or blown up, volume kept within 15-25% after 10 s of sloshing, tilt moves the water to the low side, the ball pushes water away, splash, reset). The step takes 1.5 ms on the desktop CPU. `src/ui/fluid.ts` draws the water by splatting the particles into a 288x180 density image, thresholded smoothly and shaded deeper-darker with pale foam where the water is fast. The Particles view colors particles by speed; the Grid view shows the cells the solver treats as water. Ball speed is capped at 5 m/s so a flick splashes instead of exploding. The simulation runs only while the tab is shown, and attract mode resets it.
+
+Verified (2026-10-23) on a stand-alone check page: in the browser pane, WebGL2 was unavailable after a GPU hang, so the full app could not start there. Verified there: stirring, tilt to 20 degrees, Splash, the Particles view, about 58 steps/s, and the panel fits at 1024x768 and 768x1024. Still to check: the tab inside the full app, iPad speed (BOOTH-002).

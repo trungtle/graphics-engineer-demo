@@ -190,3 +190,11 @@ Review it with: `git show 3ff4195`
 
 **CL: `b0fd583`**: Spot, Bob and Blub (CC0) with baked vertex colors (MSH2 format, PNG reader in the converter), colors in the BVH and shader, six-model picker, portrait layout tweak, Decades and 16 ms tabs removed. 117 tests.
 Review it with: `git show b0fd583`
+
+## Several lamps, and the Water station (STN-009)
+
+**Status 2026-10-23: COMPLETE on desktop.**
+
+**CL: `417c4e1`**: Light Lab gets 1, 2 or 3 ceiling lamps (warm; warm + cool; red, green, blue). Tap or drag a lamp to pick which one the swatches and size slider change. Attract mode shows the three colored lamps.
+**CL: `ffd385f`**: Water station: 2D FLIP fluid in a tank, with stirring, tilt, splash, and Water / Particles / Grid views. 129 tests.
+Review with: `git show 417c4e1`, `git show ffd385f`
