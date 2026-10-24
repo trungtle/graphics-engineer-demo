@@ -21,7 +21,6 @@ import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchC
 import { createStations } from './stations';
 import { loadMesh, modelBvh, type MeshModelId, type ModelId } from './mesh';
 import { textureData, type Bvh } from './bvh';
-import { ERAS, GI, type Shading } from './shading';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -79,8 +78,6 @@ const uTrace = {
   objPos: loc(traceProg, 'u_objPos'),
   objCol: loc(traceProg, 'u_objCol'),
   objMat: loc(traceProg, 'u_objMat'),
-  light: loc(traceProg, 'u_light'),
-  lightCol: loc(traceProg, 'u_lightCol'),
   nLights: loc(traceProg, 'u_nLights'),
   lights: loc(traceProg, 'u_lights'),
   lightCols: loc(traceProg, 'u_lightCols'),
@@ -91,12 +88,6 @@ const uTrace = {
   inside: loc(traceProg, 'u_inside'),
   th: loc(traceProg, 'u_th'),
   blend: loc(traceProg, 'u_blend'),
-  mode: loc(traceProg, 'u_mode'),
-  model: loc(traceProg, 'u_model'),
-  shadows: loc(traceProg, 'u_shadows'),
-  reflect: loc(traceProg, 'u_reflect'),
-  ao: loc(traceProg, 'u_ao'),
-  aa: loc(traceProg, 'u_aa'),
   bench: loc(traceProg, 'u_bench'),
   nPoly: loc(traceProg, 'u_nPoly'),
   plane: loc(traceProg, 'u_plane'),
@@ -127,8 +118,6 @@ let frame = 0;
 // which a path tracer cannot afford. The canvas itself stays full resolution so overlays are crisp.
 let scale = Number(params.get('scale') ?? String(1 / Math.min(window.devicePixelRatio || 1, 2)));
 const scene = defaultScene();
-// How the main picture is shaded. Light Lab always uses the path tracer; other stations change this.
-let shading: Shading = GI;
 
 // The Mirrors station draws a 3D tabletop instead of the Cornell box. `bench` is null everywhere else.
 let bench: BenchScene | null = null;
@@ -457,10 +446,6 @@ const stations = createStations({
   viewport: document.getElementById('viewport')!,
   tabs: document.getElementById('tabs')!,
 });
-const setShading = (s: Shading) => {
-  shading = s;
-  reset();
-};
 
 stations.register({
   id: 'light',
@@ -469,8 +454,8 @@ stations.register({
   root: document.getElementById('st-light')!,
   viewportSlot: document.getElementById('slot-light')!,
   onEnter: () => {
-    // another station may have changed the scene and the shading: bring the controls back in line
-    setShading(GI);
+    // another station may have changed the scene: bring the controls back in line
+    reset();
     ui.syncBounces();
     ui.syncLamp();
     ui.syncModel();
@@ -516,7 +501,7 @@ const idle = initIdle({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, eras: ERAS, setShading, setBench, bench: mirrors, setModel, water };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, setBench, bench: mirrors, setModel, water };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
@@ -575,7 +560,6 @@ function tracePass(
   cam: Camera,
   th: number,
   inside: boolean,
-  fx: Shading = GI,
 ) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
   gl.viewport(0, 0, w, h);
@@ -588,21 +572,12 @@ function tracePass(
   gl.uniform1f(uTrace.blend, blend);
   gl.uniform1f(uTrace.th, th);
   gl.uniform1i(uTrace.inside, inside ? 1 : 0);
-  gl.uniform1i(uTrace.mode, fx.mode === 'features' ? 1 : 0);
-  gl.uniform1i(uTrace.model, fx.model);
-  gl.uniform1i(uTrace.shadows, fx.shadows ? 1 : 0);
-  gl.uniform1i(uTrace.reflect, fx.reflections ? 1 : 0);
-  gl.uniform1i(uTrace.ao, fx.ao ? 1 : 0);
-  gl.uniform1i(uTrace.aa, fx.aa ? 1 : 0);
   uploadBench(bench);
   bindMesh();
   gl.uniform1i(uTrace.bounces, scene.bounces);
   gl.uniform4fv(uTrace.objPos, scene.objects.flatMap((o) => [...o.pos, o.radius]));
   gl.uniform4fv(uTrace.objCol, scene.objects.flatMap((o) => [...o.color, 1]));
   gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
-  const L0 = scene.lights[0];
-  gl.uniform4f(uTrace.light, L0.x, L0.z, 0, L0.half);
-  gl.uniform3fv(uTrace.lightCol, lightRadiance(L0));
   const lamps = [0, 1, 2].map((i) => scene.lights[Math.min(i, scene.lights.length - 1)]);
   gl.uniform1i(uTrace.nLights, scene.lights.length);
   gl.uniform4fv(uTrace.lights, lamps.flatMap((l) => [l.x, l.z, 0, l.half]));
@@ -675,10 +650,10 @@ function tick(now: number) {
     const live = now < benchLiveUntil;
     if (benchWasLive && !live) reset();
     benchWasLive = live;
-    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, live ? 0.18 : 0, benchCamera(), BENCH_TH, true, GI);
+    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, live ? 0.18 : 0, benchCamera(), BENCH_TH, true);
   } else {
     benchWasLive = false;
-    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, shading.mode === 'features' ? 1 : 0, cameraOf(scene), 0.45, false, shading);
+    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cameraOf(scene), 0.45, false);
   }
   raysTotal += rw * rh * (scene.bounces + 1);
   if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);

@@ -16,8 +16,6 @@ uniform int u_bounces;
 uniform vec4 u_objPos[3];   // xyz center, w radius
 uniform vec4 u_objCol[3];   // rgb color
 uniform int u_objMat[3];
-uniform vec4 u_light;       // the first lamp: x, z center, w half-size (y fixed at ceiling); used by feature shading
-uniform vec3 u_lightCol;    // the first lamp's emitted radiance
 uniform int u_nLights;      // ceiling lamps (1 to 3); later lamps win where they overlap
 uniform vec4 u_lights[3];
 uniform vec3 u_lightCols[3];
@@ -28,12 +26,6 @@ uniform vec3 u_camFwd;
 uniform int u_inside;       // 1: camera is inside the box (photon view), no front-plane entry
 uniform float u_th;         // tan-ish half field of view
 uniform float u_blend;      // >0: fixed accumulation weight (moving camera); 0: 1/(frame+1)
-uniform int u_mode;         // 0: path tracer (global illumination), 1: deterministic 'feature' shading
-uniform int u_model;        // feature mode lighting: 0 flat, 1 Lambert, 2 Phong
-uniform int u_shadows;      // feature mode: hard shadows from a point light at the lamp
-uniform int u_reflect;      // feature mode: one reflection bounce on shiny things
-uniform int u_ao;           // feature mode: cheap ambient occlusion
-uniform int u_aa;           // feature mode: 4 samples per pixel
 // ---- optical bench (the Mirrors puzzle as a 3D tabletop) ----
 uniform int u_bench;                // 1: draw the bench instead of the Cornell box
 uniform int u_nPoly;
@@ -101,6 +93,12 @@ float boxT(vec3 ro, vec3 inv, int node) {
   return tf >= max(tn, 0.0) ? tn : 1e30;
 }
 
+// sRGB bytes packed as r * 65536 + g * 256 + b, to linear
+vec3 unpackColor(float packed) {
+  int p = int(packed + 0.5);
+  return pow(vec3(float(p >> 16), float((p >> 8) & 255), float(p & 255)) / 255.0, vec3(2.2));
+}
+
 void meshHit(vec3 ro, vec3 rd, inout Hit h) {
   vec3 inv = 1.0 / rd;
   float best = h.t;
@@ -161,13 +159,7 @@ void meshHit(vec3 ro, vec3 rd, inout Hit h) {
   // characters carry their baked texture color in the w of each corner normal (packed sRGB, -1 = none)
   vec3 cw = vec3(texAt(u_tri, q + 3).w, texAt(u_tri, q + 4).w, texAt(u_tri, q + 5).w);
   if (cw.x >= 0.0) {
-    vec3 bary = vec3(1.0 - bu - bv, bu, bv);
-    vec3 col = vec3(0.0);
-    for (int k = 0; k < 3; k++) {
-      int p = int(cw[k] + 0.5);
-      col += bary[k] * pow(vec3(float(p >> 16), float((p >> 8) & 255), float(p & 255)) / 255.0, vec3(2.2));
-    }
-    h.albedo = col;
+    h.albedo = (1.0 - bu - bv) * unpackColor(cw.x) + bu * unpackColor(cw.y) + bv * unpackColor(cw.z);
   }
   int m = u_objMat[0];
   h.mat = m;
@@ -330,12 +322,12 @@ Hit scene(vec3 ro, vec3 rd) {
     } else if (t == ty) {
       h.n = vec3(0.0, -sign(rd.y), 0.0);
       h.albedo = vec3(0.78);
+      // written out instead of a loop: scene() is inlined into the bounce loop, and loops in here can make a
+      // driver's shader compiler take so long that the browser's GPU process hangs
       if (rd.y > 0.0) {
-        for (int i = 0; i < 3; i++) {
-          if (i >= u_nLights) break;
-          vec4 Ls = u_lights[i];
-          if (abs(p.x - Ls.x) < Ls.w && abs(p.z - Ls.y) < Ls.w) { h.emit = u_lightCols[i]; h.albedo = vec3(0.0); }
-        }
+        if (abs(p.x - u_lights[0].x) < u_lights[0].w && abs(p.z - u_lights[0].y) < u_lights[0].w) { h.emit = u_lightCols[0]; h.albedo = vec3(0.0); }
+        if (u_nLights > 1 && abs(p.x - u_lights[1].x) < u_lights[1].w && abs(p.z - u_lights[1].y) < u_lights[1].w) { h.emit = u_lightCols[1]; h.albedo = vec3(0.0); }
+        if (u_nLights > 2 && abs(p.x - u_lights[2].x) < u_lights[2].w && abs(p.z - u_lights[2].y) < u_lights[2].w) { h.emit = u_lightCols[2]; h.albedo = vec3(0.0); }
       }
     } else {
       h.n = vec3(0.0, 0.0, 1.0);
@@ -356,97 +348,7 @@ vec3 cosineDir(vec3 n) {
   return normalize(t * (r * cos(phi)) + b * (r * sin(phi)) + n * sqrt(1.0 - u1));
 }
 
-// ---- feature mode: how games shaded before (and beside) path tracing ----
-float featureAO(vec3 p, vec3 n) {
-  vec3 a = abs(n.x) > 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-  vec3 t = normalize(cross(a, n));
-  vec3 b = cross(n, t);
-  float occ = 0.0;
-  for (int i = 0; i < 6; i++) {
-    float ang = float(i) * 1.0471976;
-    float el = (i % 2 == 0) ? 0.55 : 0.9;
-    float side = 1.0 - el * 0.5;
-    vec3 d = normalize(t * (cos(ang) * side) + b * (sin(ang) * side) + n * el);
-    Hit h = scene(p + n * 1e-3, d);
-    if (h.t < 0.35) occ += 1.0;
-  }
-  return 1.0 - 0.75 * occ / 6.0;
-}
-
-vec3 featureColor(vec3 ro, vec3 rd) {
-  vec3 lampHue = u_lightCol / max(max(u_lightCol.r, u_lightCol.g), u_lightCol.b);
-  vec3 lampPos = vec3(u_light.x, 0.985, u_light.y);
-  vec3 result = vec3(0.0);
-  vec3 weight = vec3(1.0);
-  for (int bounce = 0; bounce < 2; bounce++) {
-    Hit h = scene(ro, rd);
-    if (h.t > 1e19) break;
-    if (h.mat == 4 || dot(h.emit, h.emit) > 0.0) { result += weight * min(h.emit, vec3(8.0)) * 0.12; break; }
-    vec3 p = ro + rd * h.t;
-    vec3 n = h.n;
-    if (dot(n, rd) > 0.0) n = -n;
-    vec3 col;
-    if (u_model == 0) {
-      col = h.albedo;
-    } else {
-      vec3 Ld = lampPos - p;
-      float dist = length(Ld);
-      Ld /= dist;
-      float ndl = max(dot(n, Ld), 0.0);
-      float atten = 1.0 / (1.0 + 0.9 * dist * dist);
-      float sh = 1.0;
-      if (u_shadows == 1) {
-        Hit s = scene(p + n * 1e-3, Ld);
-        if (s.t < dist) sh = 0.0;
-      }
-      float ao = (u_ao == 1) ? featureAO(p, n) : 1.0;
-      col = h.albedo * (vec3(0.18 * ao) + lampHue * (ndl * atten * 2.6 * sh));
-      if (u_model == 2) {
-        vec3 R = reflect(-Ld, n);
-        float sp = pow(max(dot(R, -rd), 0.0), 40.0) * atten * 3.0 * sh;
-        col += lampHue * sp * (h.mat == 0 ? 0.25 : 0.8);
-      }
-    }
-    bool shiny = h.mat == 1 || h.mat == 2 || h.mat == 3;
-    if (u_reflect == 1 && shiny && bounce == 0) {
-      float k = h.mat == 1 ? 0.85 : (h.mat == 3 ? 0.55 : 0.6);
-      result += weight * (1.0 - k) * col;
-      weight *= k * ((h.mat == 1 || h.mat == 3) ? h.albedo : vec3(1.0));
-      ro = p + n * 1e-3;
-      rd = reflect(rd, n);
-      continue;
-    }
-    result += weight * col;
-    break;
-  }
-  return result;
-}
-
-vec3 featureRayColor(vec2 pix) {
-  vec2 uv = pix / u_res * 2.0 - 1.0;
-  float aspect = u_res.x / u_res.y;
-  vec3 ro = u_camPos;
-  vec3 rd = normalize(u_camFwd + u_camRight * (uv.x * u_th * max(aspect, 1.0)) + u_camUp * (uv.y * u_th / min(aspect, 1.0)));
-  float t0 = (1.0 - ro.z) / rd.z;
-  vec3 p0 = ro + rd * t0;
-  bool enter = u_inside == 1 || (rd.z < -1e-3 && abs(p0.x) <= 1.0 && abs(p0.y) <= 1.0);
-  if (!enter) return vec3(0.0);
-  if (u_inside == 0) ro = p0;
-  return featureColor(ro, rd);
-}
-
-vec3 featurePixel() {
-  vec2 base = floor(gl_FragCoord.xy);
-  if (u_aa == 0) return featureRayColor(base + vec2(0.5));
-  return 0.25 * (featureRayColor(base + vec2(0.25, 0.25)) + featureRayColor(base + vec2(0.75, 0.25)) +
-                 featureRayColor(base + vec2(0.25, 0.75)) + featureRayColor(base + vec2(0.75, 0.75)));
-}
-
 void main() {
-  if (u_mode == 1) {
-    outColor = vec4(featurePixel(), 1.0);
-    return;
-  }
   rngState = pcg(uint(gl_FragCoord.x) + pcg(uint(gl_FragCoord.y) + pcg(uint(u_frame) * 9781u + 1u)));
   vec2 uv = (gl_FragCoord.xy + vec2(rnd(), rnd())) / u_res * 2.0 - 1.0;
   float aspect = u_res.x / u_res.y;
