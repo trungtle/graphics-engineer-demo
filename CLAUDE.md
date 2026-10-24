@@ -19,7 +19,7 @@ GitHub Pages, offline-capable PWA. Targets: Intel MacBook + iPad (touch-first).
 
 ## Stations
 
-Four screens switched by a bottom tab bar (`src/stations.ts`): Light Lab (the original path-tracer demo, default), Decades, 16 ms (`src/budget.ts`, `src/ui/budget.ts`), Mirrors (game logic in `src/optics.ts` + `src/levels.ts`; drawn as a path-traced 3D optical bench by `src/bench.ts` and the shader's `benchScene`; touch and overlay in `src/ui/bench.ts`). They share **one GL canvas**: `#viewport` is moved into the active station's `.viewport-slot`; the render loop skips frames while it is hidden. Rendering looks come from `src/shading.ts` (era presets) via `lightlab.setShading`; Light Lab always restores the path tracer on enter. Attract mode always switches back to Light Lab. Any new control must pass the six-viewport overflow check (see doc/roadmap/ui.md).
+Two screens switched by a bottom tab bar (`src/stations.ts`): Light Lab (the path-tracer demo, default; a model picker swaps the balls for triangle meshes: `src/mesh.ts`, `src/bvh.ts`, shader `meshHit`) and Mirrors (game logic in `src/optics.ts` + `src/levels.ts`; drawn as a path-traced 3D optical bench by `src/bench.ts` and the shader's `benchScene`; touch and overlay in `src/ui/bench.ts`). Decades and 16 ms were removed from the app on 2026-10-23 at the user's request; their code (`src/ui/decades.ts`, `src/budget.ts`, `src/ui/budget.ts`, `src/shading.ts`) is still in the repo but not wired in. Both stations share **one GL canvas**: `#viewport` is moved into the active station's `.viewport-slot`; the render loop skips frames while it is hidden. Attract mode always switches back to Light Lab. Any new control must pass the six-viewport overflow check (see doc/roadmap/ui.md).
 
 ## Rules
 

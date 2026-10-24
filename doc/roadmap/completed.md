@@ -183,3 +183,10 @@ Review it with: `git show 3708ed4`
 
 **CL: `3ff4195`**: bvh.ts + 12 tests, shader `meshHit`, cpu.ts mesh picking and photon paths, model picker in the Light Lab panel. 95 tests.
 Review it with: `git show 3ff4195`
+
+## Characters, model picker done (MSH-005); Decades and 16 ms removed
+
+**Status 2026-10-23: COMPLETE on desktop.**
+
+**CL: `b0fd583`**: Spot, Bob and Blub (CC0) with baked vertex colors (MSH2 format, PNG reader in the converter), colors in the BVH and shader, six-model picker, portrait layout tweak, Decades and 16 ms tabs removed. 117 tests.
+Review it with: `git show b0fd583`

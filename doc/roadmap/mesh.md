@@ -10,6 +10,9 @@ Requested 2026-10-16: Light Lab and Decades should be able to show the **Stanfor
 
 ## Decisions
 
+- **Characters added** (2026-10-23, user asked for "something fun with characters" and approved the download): Spot (cow), Bob (rubber-duck float) and Blub (fish) from Keenan Crane's 3D Model Repository, CC0 (public domain, checked on the repository page and in the README inside each zip). Used the triangulated OBJs as they come (Spot 5,856 triangles, Bob 10,688, Blub 14,208). The converter bakes each texture into one sRGB color per vertex (bilinear samples averaged over a vertex's corners, in linear light) and writes the `MSH2` format (MSH1 plus 3 bytes per vertex). The BVH packs each corner's color into the spare w of its normal texel, and the shader and `intersectBvh` interpolate it and use it as the albedo (the tapped material still applies: a glass or gold cow works). Files: spot.bin 61,542 bytes, bob.bin 112,260, blub.bin 149,238. Placement: Spot and Bob turned toward the camera, Blub floats 0.25 above the floor. The picker is two rows of three in landscape and one row of six in portrait; six-viewport check clean (portrait rows changed to 57/43, and 55/45 under 1100 px tall).
+- **Decades and 16 ms removed** (2026-10-23, user): the model picker now only has to live in Light Lab, which closes the Decades part of MSH-005.
+
 - **Not downloaded or committed yet** (2026-10-16): needs the user's explicit yes (file names, source and sizes above). Only the small converted result goes into the repo, not the tarballs.
 - **One BVH, built once in TypeScript** (2026-10-16): the same structure is uploaded to the GPU as float textures and walked by the CPU picker and photon recorder, so taps and photon paths hit exactly what is drawn (same rule as `cpu.ts` mirroring `shaders.ts`).
 - **Mesh replaces the balls** (2026-10-16): a model picker (Balls, Bunny, Dragon) in Light Lab and Decades; with a mesh selected the scene has one model standing on the floor, tap-to-change-material still works on it.
@@ -79,10 +82,10 @@ Result (2026-10-16): `intersectBvh` in bvh.ts is a line-for-line copy of the sha
 
 <!--task
 id: MSH-005
-status: doing
+status: done
 epic: ui
-deps: [MSH-003, MSH-004, RND-005]
-cl:
+deps: [MSH-003, MSH-004]
+cl: b0fd583
 -->
 ### MSH-005 — Model picker in Light Lab and Decades
 
@@ -90,4 +93,4 @@ A three-way picker (Balls, Bunny, Dragon) in both stations, no text beyond the n
 
 Verify: overflow check clean; switching models 50 times keeps memory flat; each model works in photon mode and in each era.
 
-Progress (2026-10-16, user asked for Light Lab): a Balls / Bunny / Dragon picker in the Light Lab panel. The picker turns on as soon as it is pressed, and the model loads on first use and stays cached. Old textures are freed on each switch. Attract mode and entering Decades or 16 ms reset the scene to the balls (`resetScene`), so Decades does not have a picker yet. The panel has no overflow at 1024x768. Still to do: a picker in Decades, the full six-viewport check, photon mode on each model on device, and RND-005 before showing it on the iPad.
+Progress (2026-10-16, user asked for Light Lab): a Balls / Bunny / Dragon picker in the Light Lab panel. The picker turns on as soon as it is pressed, and the model loads on first use and stays cached. Old textures are freed on each switch. Attract mode and entering Decades or 16 ms reset the scene to the balls (`resetScene`), so Decades does not have a picker yet. The panel has no overflow at 1024x768. Done (2026-10-23): six models (Balls, Bunny, Dragon, Spot, Bob, Blub); Decades no longer exists, so Light Lab is the only place for the picker; six-viewport check clean. Not checked yet: iPad speed. RND-005 (adaptive render scale) is still advised before showing it on the iPad, but it no longer blocks this task.
