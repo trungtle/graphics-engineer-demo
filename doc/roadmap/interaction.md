@@ -170,3 +170,23 @@ While a single photon flies, a small inset (top-right under the Photon button, 4
 
 Verify: inset appears only during a photon flight and shows what the photon is looking at (e.g. the red wall close up). Screenshot: [img/int-007-photon-first-person.jpg](img/int-007-photon-first-person.jpg). Perf on iPad/Intel Mac still to be measured in BOOTH-002.
 
+
+<!--task
+id: INT-008
+status: done
+epic: pick
+deps: [INT-001]
+cl: 7adca7a
+-->
+### INT-008 — Pick a pixel: material bar and BRDF lobe
+
+Requested 2026-10-27. A tap on the picture selects the surface under that pixel (a ring marks it). A material bar (Matte, Mirror, Glass, Metal, Glow) then covers the caption strip under the picture, never the render. Walls, floor, ceiling and back wall can be changed too (`scene.walls`, shader `u_wallMat`), except to glass, which would let rays escape the box. Tapping f_r keeps the term lit and draws the BRDF lobe at the selected point (`src/lobe.ts`):
+- matte: a cosine sphere;
+- metal: a narrow lobe around the mirror direction;
+- mirror: a needle;
+- glass: reflected and refracted needles split by Fresnel;
+- glowing surfaces and lamps: an L_e lobe.
+
+The lobe comes with a normal arrow (cos color) and an arrow toward the eye. If nothing is selected, it picks the front of the first object. The selection follows the 3D point when the camera orbits; it is cleared by a model switch or a tap on the background, and is hidden in photon mode. Material cycling by tap was replaced; keys q/w/e still cycle. Also fixed: photons ending on a glowing ball or wall were given a lamp's color (`pathEmission`).
+
+Verified (2026-10-27, desktop): diffuse sphere on a ball, metal lobe after switching to Metal, mirror floor with reflections, glass hidden for walls. The shader compiles fresh in 579 ms (`shader-check.html`, a dev page that times a cache-busted compile). Tests: `src/lobe.test.ts` (6). 135 total.
