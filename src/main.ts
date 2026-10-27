@@ -17,6 +17,9 @@ import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initBench } from './ui/bench';
 import { initFluid } from './ui/fluid';
+import { initMis } from './ui/mis';
+import { VEACH_FRAG } from './render/veach-shader';
+import { VEACH_CAMERA, VEACH_LIGHTS, VEACH_PLATES, type MisMode } from './veach';
 import { initPick } from './ui/pick';
 import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
 import { createStations } from './stations';
@@ -71,6 +74,9 @@ function program(vs: string, fs: string): WebGLProgram {
 const traceProg = program(VERT, TRACE_FRAG);
 const dispProg = program(VERT, DISPLAY_FRAG);
 const denoiseProg = program(VERT, DENOISE_FRAG);
+// Veach's MIS scene has its own small program, compiled the first time its station opens.
+let veach: { prog: WebGLProgram; loc: (n: string) => WebGLUniformLocation | null } | null = null;
+let misMode: MisMode | null = null; // null: the MIS station is not showing
 const loc = (p: WebGLProgram, n: string) => gl.getUniformLocation(p, n);
 const uTrace = {
   prev: loc(traceProg, 'u_prev'),
@@ -612,6 +618,25 @@ stations.register({
   onReset: mirrors.reset,
 });
 
+const mis = initMis({
+  setMode: (m) => {
+    misMode = m;
+    reset();
+  },
+  restart: () => reset(),
+  samples: () => frame,
+});
+stations.register({
+  id: 'mis',
+  label: 'MIS',
+  icon: '<circle cx="6" cy="6" r="2"/><circle cx="17" cy="5" r="3.5"/><path d="M3 20l18-5M3 16l18-5"/>',
+  root: document.getElementById('st-mis')!,
+  viewportSlot: document.getElementById('slot-mis')!,
+  onEnter: mis.onEnter,
+  onLeave: mis.onLeave,
+  onReset: mis.reset,
+});
+
 const water = initFluid();
 stations.register({
   id: 'fluid',
@@ -775,6 +800,41 @@ function drawPhotonView(pose: { pos: [number, number, number]; fwd: [number, num
   gl.disable(gl.SCISSOR_TEST);
 }
 
+/** One sample per pixel of Veach's scene with the chosen strategy (or all three side by side). */
+function veachPass(src: Target, dst: Target, mode: MisMode) {
+  if (!veach) {
+    const prog = program(VERT, VEACH_FRAG);
+    veach = { prog, loc: (n) => gl.getUniformLocation(prog, n) };
+  }
+  const U = veach.loc;
+  const cam = cameraLookAlong(VEACH_CAMERA.pos, [
+    VEACH_CAMERA.target[0] - VEACH_CAMERA.pos[0],
+    VEACH_CAMERA.target[1] - VEACH_CAMERA.pos[1],
+    VEACH_CAMERA.target[2] - VEACH_CAMERA.pos[2],
+  ]);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+  gl.viewport(0, 0, rw, rh);
+  gl.useProgram(veach.prog);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, src.tex);
+  gl.uniform1i(U('u_prev'), 0);
+  gl.uniform2f(U('u_res'), rw, rh);
+  gl.uniform1i(U('u_frame'), frame);
+  gl.uniform1i(U('u_mode'), mode);
+  gl.uniform3fv(U('u_camPos'), cam.pos);
+  gl.uniform3fv(U('u_camRight'), cam.right);
+  gl.uniform3fv(U('u_camUp'), cam.up);
+  gl.uniform3fv(U('u_camFwd'), cam.fwd);
+  gl.uniform1f(U('u_th'), VEACH_CAMERA.th);
+  gl.uniform4fv(U('u_lPos'), VEACH_LIGHTS.flatMap((l) => [...l.pos, l.radius]));
+  gl.uniform3fv(U('u_lRad'), VEACH_LIGHTS.flatMap((l) => l.radiance));
+  gl.uniform4fv(U('u_pC'), VEACH_PLATES.flatMap((p) => [...p.center, p.halfW]));
+  gl.uniform4fv(U('u_pN'), VEACH_PLATES.flatMap((p) => [...p.n, p.halfD]));
+  gl.uniform4fv(U('u_pU'), VEACH_PLATES.flatMap((p) => [...p.u, p.exponent]));
+  gl.uniform4fv(U('u_pV'), VEACH_PLATES.flatMap((p) => [...p.v, 0]));
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
 /** Run the a-trous passes over the accumulated picture; returns the texture to show. */
 function denoised(spp: number): WebGLTexture {
   const src = targets[cur];
@@ -833,7 +893,9 @@ function tick(now: number) {
   }
 
   // deterministic raster-era looks replace the picture every frame; the path tracer accumulates
-  if (bench) {
+  if (misMode !== null) {
+    veachPass(targets[cur], targets[1 - cur], misMode);
+  } else if (bench) {
     // the bench is a free-standing scene: its own camera, no front opening, always path traced
     const live = now < benchLiveUntil;
     if (benchWasLive && !live) reset();
@@ -851,7 +913,8 @@ function tick(now: number) {
   cur = 1 - cur;
   frame++;
 
-  const shown = denoise ? denoised(bench && now < benchLiveUntil ? 8 : frame) : targets[cur].tex;
+  // the MIS station shows raw samples: its noise is the point
+  const shown = denoise && misMode === null ? denoised(bench && now < benchLiveUntil ? 8 : frame) : targets[cur].tex;
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.useProgram(dispProg);
