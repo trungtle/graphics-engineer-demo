@@ -80,6 +80,7 @@ const uTrace = {
   objCol: loc(traceProg, 'u_objCol'),
   objMat: loc(traceProg, 'u_objMat'),
   nLights: loc(traceProg, 'u_nLights'),
+  nee: loc(traceProg, 'u_nee'),
   wallMat: loc(traceProg, 'u_wallMat'),
   lights: loc(traceProg, 'u_lights'),
   lightCols: loc(traceProg, 'u_lightCols'),
@@ -120,6 +121,8 @@ let frame = 0;
 // which a path tracer cannot afford. The canvas itself stays full resolution so overlays are crisp.
 let scale = Number(params.get('scale') ?? String(1 / Math.min(window.devicePixelRatio || 1, 2)));
 const scene = defaultScene();
+// Light sampling (next-event estimation + MIS): on by default; ?nee=0 or the n key turns it off to compare noise.
+let nee = params.get('nee') !== '0';
 
 // The Mirrors station draws a 3D tabletop instead of the Cornell box. `bench` is null everywhere else.
 let bench: BenchScene | null = null;
@@ -462,6 +465,10 @@ window.addEventListener('keydown', (e) => {
     ui.syncBounces();
     reset();
   }
+  if (e.key === 'n') {
+    nee = !nee;
+    reset();
+  }
   if (e.key === 's') {
     scale = scale === 1 ? 0.5 : 1;
     reset();
@@ -514,7 +521,20 @@ stations.register({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, stations, setBench, bench: mirrors, setModel, water, picker };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, stations, setBench, bench: mirrors, setModel, water, picker,
+  /** debug: the accumulated linear image (rgba floats, bottom row first) and how many samples it holds */
+  capture: () => {
+    const buf = new Float32Array(rw * rh * 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, targets[cur].fbo);
+    gl.readPixels(0, 0, rw, rh, gl.RGBA, gl.FLOAT, buf);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { w: rw, h: rh, spp: frame, data: buf };
+  },
+  setNee: (on: boolean) => {
+    nee = on;
+    reset();
+  },
+};
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
@@ -594,6 +614,7 @@ function tracePass(
   gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
   const lamps = [0, 1, 2].map((i) => scene.lights[Math.min(i, scene.lights.length - 1)]);
   gl.uniform1i(uTrace.nLights, scene.lights.length);
+  gl.uniform1i(uTrace.nee, nee ? 1 : 0);
   gl.uniform1iv(uTrace.wallMat, WALLS.map((w) => scene.walls[w]));
   gl.uniform4fv(uTrace.lights, lamps.flatMap((l) => [l.x, l.z, 0, l.half]));
   gl.uniform3fv(uTrace.lightCols, lamps.flatMap((l) => lightRadiance(l)));
@@ -703,7 +724,7 @@ function tick(now: number) {
     hud.textContent =
       `${renderer}\n` +
       `format ${useF32 ? 'RGBA32F' : 'RGBA16F'}  f32:${!!extF32} f16:${!!extF16} f32lin:${!!extLin} timer:${!!extTimer}\n` +
-      `target ${rw}x${rh} (scale ${scale})  bounces ${scene.bounces}\n` +
+      `target ${rw}x${rh} (scale ${scale})  bounces ${scene.bounces}  light sampling ${nee ? 'on' : 'off'} (n)\n` +
       `frame ${ema.toFixed(1)} ms (${(1000 / ema).toFixed(0)} fps)  gpu ${Number.isNaN(gpuMs) ? 'n/a' : gpuMs.toFixed(1) + ' ms'}  spp ${frame}  ~${((rw * rh * frame * (scene.bounces + 1)) / 1e9).toFixed(2)}B rays\n` +
       `tap: pick (${pickedText || 'none'})   s: scale 1/0.5   keys 0-8: bounces   q/w/e: cycle object material   ?fmt=16: half-float`;
   }

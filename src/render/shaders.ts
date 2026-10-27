@@ -17,7 +17,8 @@ uniform vec4 u_objPos[3];   // xyz center, w radius
 uniform vec4 u_objCol[3];   // rgb color
 uniform int u_objMat[3];
 uniform int u_wallMat[5];    // left, right, floor, ceiling, back: 0 matte, 1 mirror, 3 metal, 4 glowing
-uniform int u_nLights;      // ceiling lamps (1 to 3); later lamps win where they overlap
+uniform int u_nLights;
+uniform int u_nee;          // 1: next-event estimation toward the ceiling lamps, combined with MIS      // ceiling lamps (1 to 3); later lamps win where they overlap
 uniform vec4 u_lights[3];
 uniform vec3 u_lightCols[3];
 uniform vec3 u_camPos;
@@ -59,8 +60,10 @@ const float EMISSIVE_OBJ = 6.0;
 const float EMISSIVE_WALL = 1.5;
 const float METAL_ROUGH = 0.18;
 const float GLASS_IOR = 1.5;
+const float PI = 3.14159265;
 
-struct Hit { float t; vec3 n; vec3 albedo; vec3 emit; int mat; };
+// lamp: which ceiling lamp was hit (-1: anything else); needed to weight lamp hits for MIS
+struct Hit { float t; vec3 n; vec3 albedo; vec3 emit; int mat; int lamp; };
 
 void sphere(vec3 ro, vec3 rd, int i, inout Hit h) {
   vec3 c = u_objPos[i].xyz;
@@ -78,6 +81,7 @@ void sphere(vec3 ro, vec3 rd, int i, inout Hit h) {
     h.albedo = u_objCol[i].rgb;
     int m = u_objMat[i];
     h.mat = m;
+    h.lamp = -1;
     h.emit = m == 4 ? u_objCol[i].rgb * EMISSIVE_OBJ : vec3(0.0);
   }
 }
@@ -156,6 +160,7 @@ void meshHit(vec3 ro, vec3 rd, inout Hit h) {
   // a smooth normal that disagrees with the real surface about which side the ray is on would leak light
   if (dot(n, rd) * dot(g, rd) <= 0.0) n = g;
   h.t = best;
+  h.lamp = -1;
   h.n = n;
   h.albedo = u_objCol[0].rgb;
   // characters carry their baked texture color in the w of each corner normal (packed sRGB, -1 = none)
@@ -221,7 +226,7 @@ bool hitBeam(vec3 ro, vec3 rd, vec3 a, vec3 b, float r, out float tHit, out vec3
 
 Hit benchScene(vec3 ro, vec3 rd) {
   Hit h;
-  h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0); h.mat = 0;
+  h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0); h.mat = 0; h.lamp = -1;
   // the optical table: dark steel with a grid of holes
   if (rd.y < -1e-5) {
     float t = -ro.y / rd.y;
@@ -308,7 +313,7 @@ vec3 benchEnv(vec3 d) {
 
 Hit scene(vec3 ro, vec3 rd) {
   if (u_bench == 1) return benchScene(ro, rd);
-  Hit h; h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0); h.mat = 0;
+  Hit h; h.t = 1e20; h.n = vec3(0.0); h.albedo = vec3(0.0); h.emit = vec3(0.0); h.mat = 0; h.lamp = -1;
   vec3 inv = 1.0 / rd;
   float tx = (rd.x < 0.0 ? -1.0 - ro.x : 1.0 - ro.x) * inv.x;
   float ty = (rd.y < 0.0 ? -1.0 - ro.y : 1.0 - ro.y) * inv.y;
@@ -330,9 +335,9 @@ Hit scene(vec3 ro, vec3 rd) {
       // written out instead of a loop: scene() is inlined into the bounce loop, and loops in here can make a
       // driver's shader compiler take so long that the browser's GPU process hangs
       if (rd.y > 0.0) {
-        if (abs(p.x - u_lights[0].x) < u_lights[0].w && abs(p.z - u_lights[0].y) < u_lights[0].w) { h.emit = u_lightCols[0]; h.albedo = vec3(0.0); }
-        if (u_nLights > 1 && abs(p.x - u_lights[1].x) < u_lights[1].w && abs(p.z - u_lights[1].y) < u_lights[1].w) { h.emit = u_lightCols[1]; h.albedo = vec3(0.0); }
-        if (u_nLights > 2 && abs(p.x - u_lights[2].x) < u_lights[2].w && abs(p.z - u_lights[2].y) < u_lights[2].w) { h.emit = u_lightCols[2]; h.albedo = vec3(0.0); }
+        if (abs(p.x - u_lights[0].x) < u_lights[0].w && abs(p.z - u_lights[0].y) < u_lights[0].w) { h.emit = u_lightCols[0]; h.albedo = vec3(0.0); h.lamp = 0; }
+        if (u_nLights > 1 && abs(p.x - u_lights[1].x) < u_lights[1].w && abs(p.z - u_lights[1].y) < u_lights[1].w) { h.emit = u_lightCols[1]; h.albedo = vec3(0.0); h.lamp = 1; }
+        if (u_nLights > 2 && abs(p.x - u_lights[2].x) < u_lights[2].w && abs(p.z - u_lights[2].y) < u_lights[2].w) { h.emit = u_lightCols[2]; h.albedo = vec3(0.0); h.lamp = 2; }
       }
     } else {
       h.n = vec3(0.0, 0.0, 1.0);
@@ -374,21 +379,74 @@ void main() {
   if (enter) {
     if (u_inside == 0) ro = p0;
     vec3 thr = vec3(1.0);
-    for (int i = 0; i <= 8; i++) {
-      if (i > u_bounces) break;
+    bool nee = u_nee == 1 && u_bench == 0;
+    int bounce = 0;
+    // Next-event estimation: at each matte bounce a shadow ray goes to a random point on a random lamp. It is traced
+    // through the same scene() call as the path (the loop alternates), because a second scene() call would be
+    // inlined a second time and make the shader much slower to compile.
+    bool shadowRay = false;
+    vec3 shadowL = vec3(0.0);   // what the lamp sample adds if the shadow ray reaches it
+    float shadowDist = 0.0;
+    vec3 nextRo = vec3(0.0);    // where the path continues after the shadow ray
+    vec3 nextRd = vec3(0.0);
+    float prevPdf = 0.0;        // solid-angle pdf of the last matte bounce's direction (0: last bounce was not matte)
+    for (int it = 0; it < 18; it++) {
       Hit h = scene(ro, rd);
+      if (shadowRay) {
+        if (h.lamp >= 0 && h.t > shadowDist - 2e-3) L += shadowL;
+        shadowRay = false;
+        ro = nextRo;
+        rd = nextRd;
+        continue;
+      }
       if (h.t > 1e19) {
         if (u_bench == 1) L += thr * benchEnv(rd);
         break;
       }
-      L += thr * h.emit;
-      if (i == u_bounces || h.mat == 4) break;
+      // a lamp found by a matte bounce could also have been sampled directly: weight the two (power heuristic)
+      float wE = 1.0;
+      if (nee && prevPdf > 0.0 && h.lamp >= 0) {
+        vec4 Lh = u_lights[h.lamp];
+        float pdfL = h.t * h.t / (max(rd.y, 1e-4) * 4.0 * Lh.w * Lh.w) / float(u_nLights);
+        wE = prevPdf * prevPdf / (prevPdf * prevPdf + pdfL * pdfL);
+      }
+      L += thr * h.emit * wE;
+      if (bounce == u_bounces || h.mat == 4) break;
+      bounce++;
       vec3 p = ro + rd * h.t;
       vec3 n = h.n;
       bool inside = dot(rd, n) > 0.0;
       if (inside) n = -n;  // n now faces against the ray
+      prevPdf = 0.0;
       if (h.mat == 0) {
-        ro = p + n * 1e-3; rd = cosineDir(n); thr *= h.albedo;
+        vec3 o = p + n * 1e-3;
+        vec3 nd = cosineDir(n);
+        if (nee) {
+          int k = min(int(rnd() * float(u_nLights)), u_nLights - 1);
+          vec4 Ls = u_lights[k];
+          vec3 q = vec3(Ls.x + (2.0 * rnd() - 1.0) * Ls.w, 1.0, Ls.y + (2.0 * rnd() - 1.0) * Ls.w);
+          vec3 wi = q - o;
+          float d2 = dot(wi, wi);
+          float d = sqrt(d2);
+          wi /= d;
+          float cosS = dot(n, wi);
+          float cosL = wi.y;  // the lamp faces straight down
+          if (cosS > 0.0 && cosL > 0.0) {
+            float pdfL = d2 / (cosL * 4.0 * Ls.w * Ls.w) / float(u_nLights);
+            float pdfB = cosS / PI;
+            float w = pdfL * pdfL / (pdfL * pdfL + pdfB * pdfB);
+            shadowL = thr * (h.albedo / PI) * u_lightCols[k] * cosS / pdfL * w;
+            shadowDist = d;
+            shadowRay = true;
+            nextRo = o;
+            nextRd = nd;
+          }
+          prevPdf = max(dot(n, nd), 1e-6) / PI;
+          thr *= h.albedo;
+          if (shadowRay) { ro = o; rd = wi; } else { ro = o; rd = nd; }
+        } else {
+          ro = o; rd = nd; thr *= h.albedo;
+        }
       } else if (h.mat == 1) {
         ro = p + n * 1e-3; rd = reflect(rd, n); thr *= h.albedo;
       } else if (h.mat == 3) {
