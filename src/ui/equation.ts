@@ -13,22 +13,25 @@ export const TERM_NAMES: Record<Term, string> = {
 };
 const TAP_MS = 9000;
 
-export interface Equation {
+export interface Equation<T extends string = Term> {
   /** Light up a term for a moment. Used by controls. */
-  highlight(term: Term, ms?: number): void;
+  highlight(term: T, ms?: number): void;
   /** Keep one term lit until cleared (null), e.g. f_r while its lobe is shown. Brief highlights still flash over it. */
-  setSticky(term: Term | null): void;
+  setSticky(term: T | null): void;
   /** Called when a term button is tapped. */
-  onTap(cb: (term: Term) => void): void;
+  onTap(cb: (term: T) => void): void;
 }
 
 /** The equation is a row of colored term buttons: they glow when the matching control is used (or when tapped). No text. */
-export function initEquation(): Equation {
-  const root = document.getElementById('equation')!;
+export function initEquation<T extends string = Term>(
+  rootId = 'equation',
+  names: Record<T, string> = TERM_NAMES as Record<string, string> as Record<T, string>,
+): Equation<T> {
+  const root = document.getElementById(rootId)!;
   const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('.term'));
   let timer = 0;
-  let sticky: Term | null = null;
-  let tapCb: ((t: Term) => void) | null = null;
+  let sticky: T | null = null;
+  let tapCb: ((t: T) => void) | null = null;
 
   // one small label, placed under whichever term was tapped (fixed position, so no card clips it)
   const tip = document.createElement('div');
@@ -50,7 +53,7 @@ export function initEquation(): Equation {
   };
   const showTip = (b: HTMLButtonElement) => {
     tipFor = b;
-    tip.textContent = TERM_NAMES[b.dataset.term as Term];
+    tip.textContent = names[b.dataset.term as T];
     tip.style.setProperty('--tc', getComputedStyle(b).color);
     tip.hidden = false;
     placeTip();
@@ -61,7 +64,7 @@ export function initEquation(): Equation {
   };
   window.addEventListener('resize', placeTip);
 
-  const paint = (term: Term | null) =>
+  const paint = (term: T | null) =>
     buttons.forEach((b) => {
       const on = b.dataset.term === term || b.dataset.term === sticky;
       b.classList.toggle('on', on);
@@ -73,7 +76,7 @@ export function initEquation(): Equation {
     if (tipFor && tipFor.dataset.term !== sticky) hideTip();
   };
 
-  const show = (term: Term, ms: number) => {
+  const show = (term: T, ms: number) => {
     window.clearTimeout(timer);
     paint(term);
     timer = window.setTimeout(clear, ms);
@@ -81,7 +84,7 @@ export function initEquation(): Equation {
 
   buttons.forEach((b) =>
     b.addEventListener('click', () => {
-      const term = b.dataset.term as Term;
+      const term = b.dataset.term as T;
       show(term, TAP_MS);
       showTip(b);
       tapCb?.(term);

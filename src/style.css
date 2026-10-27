@@ -215,10 +215,18 @@ h2 {
 .t-fr { color: var(--c-fr); }
 .t-li { color: var(--c-li); }
 .t-cos { color: var(--c-cos); }
+.t-du { color: var(--c-lo); }
+.t-adv { color: var(--c-li); }
+.t-p { color: var(--c-int); }
+.t-visc { color: var(--c-le); }
+.t-g { color: var(--c-fr); }
+.eq b { font-style: normal; font-weight: 700; }
+.eq sup { font-size: 0.55em; font-style: normal; }
 
-#equation { container-type: inline-size; }
+#equation, #ns-equation { container-type: inline-size; }
 @supports (font-size: 1cqw) {
   #equation .eq { font-size: clamp(18px, 7.4cqw, 64px); }
+  #ns-equation .eq { font-size: clamp(14px, 4.6cqw, 40px); }
 }
 
 

@@ -97,6 +97,20 @@
         </section>
         <aside class="panel-col">
           <header class="brand"><h1>Water</h1></header>
+          <section id="ns-equation" aria-label="The Navier-Stokes equation">
+            <h2>The Navier&ndash;Stokes equation</h2>
+            <div class="eq" role="group" aria-label="Change in velocity equals minus velocity dot gradient velocity, minus gradient of pressure over density, plus viscosity times Laplacian of velocity, plus gravity">
+              <button class="term t-du" data-term="du" type="button" aria-label="Change in velocity over time">&part;<b>u</b>/&part;t</button>
+              <span class="op">=</span>
+              <button class="term t-adv" data-term="adv" type="button" aria-label="Advection">&minus;(<b>u</b>&middot;&nabla;)<b>u</b></button>
+              <span class="op">&minus;</span>
+              <button class="term t-p" data-term="p" type="button" aria-label="Pressure">&nabla;p/&rho;</button>
+              <span class="op">+</span>
+              <button class="term t-visc" data-term="visc" type="button" aria-label="Viscosity">&nu;&nabla;<sup>2</sup><b>u</b></button>
+              <span class="op">+</span>
+              <button class="term t-g" data-term="g" type="button" aria-label="Gravity"><b>g</b></button>
+            </div>
+          </section>
           <section id="fluid-controls" aria-label="Tank"></section>
         </aside>
       </div>

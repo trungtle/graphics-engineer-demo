@@ -2,6 +2,17 @@
 // drop a splash, or look under the hood: the particles the simulation moves and the grid it solves on.
 import { Flip, FLUID, tiltedGravity, type Obstacle } from '../fluid';
 import { formatCount } from './controls';
+import { initEquation } from './equation';
+
+type NsTerm = 'du' | 'adv' | 'p' | 'visc' | 'g';
+/** Short labels shown under a tapped term. */
+const NS_NAMES: Record<NsTerm, string> = {
+  du: 'How the velocity changes',
+  adv: 'Water carries its own motion',
+  p: 'Pressure pushes water apart',
+  visc: 'Stickiness (not simulated)',
+  g: 'Gravity',
+};
 
 type View = 'water' | 'particles' | 'grid';
 const VIEWS: { id: View; name: string }[] = [
@@ -23,6 +34,7 @@ export function initFluid(): { onEnter(): void; onLeave(): void; reset(): void; 
   const canvas = document.getElementById('fluid-canvas') as HTMLCanvasElement;
   const root = document.getElementById('fluid-controls')!;
   const sim = new Flip();
+  const eq = initEquation<NsTerm>('ns-equation', NS_NAMES);
 
   root.innerHTML = `
     <div class="ctl-row">
@@ -66,6 +78,7 @@ export function initFluid(): { onEnter(): void; onLeave(): void; reset(): void; 
     b.addEventListener('click', () => {
       view = b.dataset.view as View;
       paintView();
+      eq.highlight(view === 'grid' ? 'p' : view === 'particles' ? 'adv' : 'du');
     }),
   );
   const syncTilt = () => {
@@ -76,8 +89,12 @@ export function initFluid(): { onEnter(): void; onLeave(): void; reset(): void; 
   tiltEl.addEventListener('input', () => {
     tiltTarget = (Number(tiltEl.value) * Math.PI) / 180;
     syncTilt();
+    eq.highlight('g');
   });
-  root.querySelector('#fluid-splash')!.addEventListener('click', () => sim.splash());
+  root.querySelector('#fluid-splash')!.addEventListener('click', () => {
+    sim.splash();
+    eq.highlight('g');
+  });
   root.querySelector('#fluid-reset')!.addEventListener('click', () => reset());
   paintView();
   syncTilt();
@@ -132,6 +149,7 @@ export function initFluid(): { onEnter(): void; onLeave(): void; reset(): void; 
     const [x, y] = toTank(e.clientX - r.left, e.clientY - r.top);
     canvas.setPointerCapture(e.pointerId);
     ball = { id: e.pointerId, x, y, vx: 0, vy: 0, r: BALL_R };
+    eq.highlight('p', 4000);
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!ball || e.pointerId !== ball.id) return;
