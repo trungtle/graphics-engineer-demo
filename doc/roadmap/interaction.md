@@ -190,3 +190,13 @@ Requested 2026-10-27. A tap on the picture selects the surface under that pixel 
 The lobe comes with a normal arrow (cos color) and an arrow toward the eye. If nothing is selected, it picks the front of the first object. The selection follows the 3D point when the camera orbits; it is cleared by a model switch or a tap on the background, and is hidden in photon mode. Material cycling by tap was replaced; keys q/w/e still cycle. Also fixed: photons ending on a glowing ball or wall were given a lamp's color (`pathEmission`).
 
 Verified (2026-10-27, desktop): diffuse sphere on a ball, metal lobe after switching to Metal, mirror floor with reflections, glass hidden for walls. The shader compiles fresh in 579 ms (`shader-check.html`, a dev page that times a cache-busted compile). Tests: `src/lobe.test.ts` (6). 135 total.
+
+Extended (2026-10-27, user): every equation term now has a picture at the selected pixel. Tapping a term toggles it, and it stays lit with its name label (`src/termviz.ts`, drawn by `src/ui/pick.ts`):
+- L_o: a thick arrow toward the eye in the pixel's rendered color.
+- L_e: the emission lobe, or a dashed empty dome when the surface gives off nothing.
+- The integral and d-omega: the hemisphere of directions with one filled patch.
+- f_r: the BRDF lobe.
+- L_i: arrows arriving from 28 directions spread over the hemisphere, each colored by what it sees, plus a bright arrow from every lamp the point can see. Shadowed points get none.
+- cos theta: the normal, the direction to the selected lamp, and the angle between them.
+
+Tests: `src/termviz.test.ts` (6). Also fixed: the GPU timer called `endQuery` every frame while a query was still pending, which flooded the console with WebGL warnings.

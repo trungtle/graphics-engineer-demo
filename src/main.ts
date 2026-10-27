@@ -310,13 +310,14 @@ const picker = initPick({
     eq.highlight(m === 4 ? 'le' : 'fr');
     reset();
   },
+  readPixel,
 });
 eq.onTap((term) => {
-  if (term !== 'fr') return;
-  picker.lobe = !picker.lobe;
-  eq.setSticky(picker.lobe ? 'fr' : null);
+  // a term switches on its picture at the selected pixel; tapping it again switches it off
+  picker.term = picker.term === term ? null : term;
+  eq.setSticky(picker.term);
   // nothing selected yet: pick the front of the first object so there is something to show
-  if (picker.lobe && !picker.hit) {
+  if (picker.term && !picker.hit) {
     const cam = cameraOf(scene);
     const r = canvas.getBoundingClientRect();
     const aspect = r.width / r.height;
@@ -513,13 +514,14 @@ stations.register({
 });
 
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, stations, setBench, bench: mirrors, setModel, water };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, stations, setBench, bench: mirrors, setModel, water, picker };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;
 let last = performance.now();
 let gpuMs = NaN;
 let query: WebGLQuery | null = null;
+let queryOpen = false; // a query is begun on one frame and ended once; later frames just wait for its result
 
 function setBench(b: BenchScene | null, live = false) {
   bench = b;
@@ -655,6 +657,7 @@ function tick(now: number) {
   if (!query && extTimer) {
     query = gl.createQuery()!;
     gl.beginQuery(extTimer.TIME_ELAPSED_EXT, query);
+    queryOpen = true;
   }
 
   // deterministic raster-era looks replace the picture every frame; the path tracer accumulates
@@ -669,7 +672,10 @@ function tick(now: number) {
     tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cameraOf(scene), 0.45, false);
   }
   raysTotal += rw * rh * (scene.bounces + 1);
-  if (query && extTimer) gl.endQuery(extTimer.TIME_ELAPSED_EXT);
+  if (queryOpen && extTimer) {
+    gl.endQuery(extTimer.TIME_ELAPSED_EXT);
+    queryOpen = false;
+  }
   cur = 1 - cur;
   frame++;
 
