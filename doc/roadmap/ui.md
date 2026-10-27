@@ -7,6 +7,13 @@ large readable type from a couple of meters away. English only.
 
 ## Decisions
 
+- **Camera controls, stats under the picture, convergence graph** (2026-10-27, user):
+  - Camera: field of view (25-80 degrees), aperture (0-40 cm, a thin lens in the shader, pinhole by default) and focus distance (1.6-6 m) live in a compact Camera block under Lamp, one line per control. In portrait it sits beside Light bounces and Lamp. The user did not want it behind a switch, so tap-to-focus was dropped. CPU picking, projection, photon paths and the term pictures follow the field of view (`Camera.th`); photon paths start from the pinhole.
+  - Stats: samples per pixel and rays traced moved from the panel to a strip under the picture.
+  - Convergence graph, in the same strip: a small log-log graph of the picture's estimated noise against samples. The noise comes from a 64x64 GPU pass over the denoiser's second-moment layer: each pixel's standard error divided by the mean brightness. It is measured at log-spaced sample counts. A dotted 1/sqrt(N) line shows the Monte Carlo rate, and the previous run stays faded, so switching light sampling off and on shows the drop (about 36% vs 4.6% noise at 64 samples).
+  - The caption bar went from three lines to two to give the picture back some height.
+  - Short landscape screens get slightly tighter rows. Six-viewport check clean.
+
 - **Term names on tap** (2026-10-27, user asked for a very short tooltip): tapping an equation term shows its name just below it: Outgoing light, Emitted light, Sum over all directions, Material (BRDF), Incoming light, Angle to the surface (`TERM_NAMES` in `src/ui/equation.ts`). The label sits over the panel, never the render. It stays while the term is lit, and while f_r's lobe is on. It is kept inside the window.
 
 - **Attract mode removed** (2026-10-27, user): the page no longer starts the idle show after 45 s, and `?idle=` is ignored. `src/idle.ts` (and the idle caption CSS) stays in the repo, unwired, in case it is wanted back. UI-004 stays recorded as done.

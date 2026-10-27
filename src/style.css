@@ -132,7 +132,7 @@ html, body {
 #explain {
   flex: none;
   margin: 0;
-  height: calc(var(--fs-small) * 1.35 * 3 + var(--s-3) * 2);
+  height: calc(var(--fs-small) * 1.35 * 2 + var(--s-3) * 2);
   padding: var(--s-3) var(--s-5);
   border-left: 6px solid var(--line);
   font-size: var(--fs-small);
@@ -229,7 +229,7 @@ h2 {
 .ctl-row { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; row-gap: var(--s-2); }
 
 /* light sampling and denoiser switches: beside Restart where there is room, their own line in the narrow panel */
-.render-toggles { display: flex; gap: var(--s-2); order: 3; flex-basis: 100%; }
+.render-toggles { display: flex; flex-wrap: wrap; gap: var(--s-2); flex: 1 1 0; min-width: 0; }
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -251,12 +251,12 @@ h2 {
 .toggle:active { transform: scale(0.97); }
 .toggle[hidden] { display: none; }
 .toggle.cam[aria-pressed='true'] i { background: var(--c-fr); border-color: var(--c-fr); }
-.cam-ctl { display: flex; flex-direction: column; gap: var(--s-3); }
-.cam-ctl[hidden], .scene-ctl[hidden] { display: none; }
-@media (orientation: portrait) {
-  .render-toggles { order: 0; flex-basis: auto; margin-left: auto; }
-  .render-toggles + .btn { margin-left: 0; }
-}
+/* camera: one compact line per control (label, slider, value) */
+.cam-ctl { display: flex; flex-direction: column; gap: 0; }
+.cam-row { display: grid; grid-template-columns: 6.6em minmax(0, 1fr) 3.4em; align-items: center; gap: var(--s-2); height: 34px; font-size: var(--fs-small); color: var(--muted); }
+.cam-row .slider { height: 34px; }
+.cam-row b { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+
 .stat { display: flex; flex-direction: column; min-width: 0; }
 .stat-num { font-size: calc(var(--fs-body) * 1.5); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .stat-lab { font-size: var(--fs-small); color: var(--muted); }
@@ -639,7 +639,7 @@ body.idle #explain strong { color: var(--ink); }
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(var(--fs-small) * 1.35 * 3 + var(--s-3) * 2);
+  height: calc(var(--fs-small) * 1.35 * 2 + var(--s-3) * 2);
   display: flex;
   align-items: center;
   gap: var(--s-2);
@@ -699,3 +699,28 @@ body.idle #explain strong { color: var(--ink); }
 .mis-labels[hidden] { display: none; }
 #mis-controls { display: flex; flex-direction: column; gap: var(--s-3); }
 #mis-controls .seg { grid-template-columns: repeat(4, 1fr); }
+
+/* ---- under the Light Lab picture: samples, rays and the convergence graph ---- */
+#stage-stats { flex: none; display: flex; align-items: center; gap: var(--s-4); padding: var(--s-2) var(--s-5); border-top: 1px solid var(--line); }
+.conv { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: var(--s-2); height: 52px; }
+#conv { flex: 1 1 0; min-width: 60px; height: 100%; display: block; }
+.conv-lab { font-size: var(--fs-small); color: var(--muted); white-space: nowrap; }
+.conv-lab b { color: var(--c-int); font-variant-numeric: tabular-nums; }
+
+/* Light Lab panel on a portrait iPad: the camera block sits beside Light bounces and Lamp, not below them */
+@media (orientation: portrait) {
+  #controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s-5); row-gap: var(--s-3); align-content: start; }
+  #controls > .ctl-row,
+  #controls > .seg { grid-column: 1 / -1; }
+  #controls > .ctl-block:not(.cam-ctl):not(.lamp) { grid-column: 1; grid-row: 3; }
+  #controls > .ctl-block.lamp { grid-column: 1; grid-row: 4; }
+  #controls > .cam-ctl { grid-column: 2; grid-row: 3 / span 2; }
+}
+/* short landscape screens: slightly tighter rows so the camera block fits under the lamp */
+@media (orientation: landscape) and (max-height: 860px) {
+  #controls .seg-btn { min-height: 30px; }
+  #controls .toggle { min-height: 30px; }
+  .cam-row,
+  .cam-row .slider { height: 30px; }
+  #controls { gap: var(--s-2); }
+}

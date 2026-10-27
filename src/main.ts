@@ -1,10 +1,10 @@
 import './style.css';
-import { VERT, TRACE_FRAG, DISPLAY_FRAG, DENOISE_FRAG } from './render/shaders';
+import { VERT, TRACE_FRAG, DISPLAY_FRAG, DENOISE_FRAG, NOISE_FRAG, NOISE_N } from './render/shaders';
+import { initConvergence } from './ui/convergence';
 import {
   CAMERA_PITCH_MAX,
   CAMERA_PITCH_MIN,
   CAMERA_YAW_LIMIT,
-  FOCUS_RANGE,
   clampLight,
   defaultScene,
   lightRadiance,
@@ -75,6 +75,7 @@ function program(vs: string, fs: string): WebGLProgram {
 const traceProg = program(VERT, TRACE_FRAG);
 const dispProg = program(VERT, DISPLAY_FRAG);
 const denoiseProg = program(VERT, DENOISE_FRAG);
+const noiseProg = program(VERT, NOISE_FRAG);
 // Veach's MIS scene has its own small program, compiled the first time its station opens.
 let veach: { prog: WebGLProgram; loc: (n: string) => WebGLUniformLocation | null } | null = null;
 let misMode: MisMode | null = null; // null: the MIS station is not showing
@@ -331,7 +332,7 @@ function resize() {
     rh = h;
     targets = [makeTarget(w, h, true), makeTarget(w, h, true)];
     denoiseTargets = [makeTarget(w, h), makeTarget(w, h)];
-    frame = 0;
+    reset();
   }
 }
 
@@ -372,9 +373,14 @@ function readPixel(nx: number, ny: number): [number, number, number] | null {
 }
 
 let photon: ReturnType<typeof initPhoton> | undefined;
+// Convergence graph: the picture's noise estimate, measured at samples spaced evenly on a log scale.
+const conv = initConvergence();
+let nextNoiseAt = 4;
 const reset = () => {
   frame = 0;
   photon?.clear();
+  conv.restart();
+  nextNoiseAt = 4; // a pixel's spread needs a few samples before it means anything
 };
 const eq = initEquation();
 const ui = initControls({
@@ -546,15 +552,6 @@ canvas.addEventListener('pointerup', (e) => {
   pickedText = h ? (h.surface === 'object' ? `object ${h.objectIndex}` : h.surface) : 'background';
   if (photon?.enabled) {
     photon.trace(nx, ny);
-    return;
-  }
-  if (h && ui.cameraOpen()) {
-    // with the camera controls open, a tap focuses there
-    const cam = cameraOf(scene);
-    scene.camera.focus = Math.min(FOCUS_RANGE[1], Math.max(FOCUS_RANGE[0], (h.p[0] - cam.pos[0]) * cam.fwd[0] + (h.p[1] - cam.pos[1]) * cam.fwd[1] + (h.p[2] - cam.pos[2]) * cam.fwd[2]));
-    ui.syncCamera();
-    reset();
-    lastTap = null;
     return;
   }
   if (h) {
@@ -851,6 +848,33 @@ function veachPass(src: Target, dst: Target, mode: MisMode) {
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
+let noiseTarget: Target | null = null;
+const noiseBuf = new Float32Array(NOISE_N * NOISE_N * 4);
+function measureNoise(spp: number) {
+  if (!noiseTarget) noiseTarget = makeTarget(NOISE_N, NOISE_N);
+  const src = targets[cur];
+  gl.bindFramebuffer(gl.FRAMEBUFFER, noiseTarget.fbo);
+  gl.viewport(0, 0, NOISE_N, NOISE_N);
+  gl.useProgram(noiseProg);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, src.tex);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, src.g2!);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.uniform1i(gl.getUniformLocation(noiseProg, 'u_color'), 1);
+  gl.uniform1i(gl.getUniformLocation(noiseProg, 'u_g2'), 2);
+  gl.uniform1f(gl.getUniformLocation(noiseProg, 'u_spp'), spp);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.readPixels(0, 0, NOISE_N, NOISE_N, gl.RGBA, gl.FLOAT, noiseBuf);
+  let se = 0;
+  let mean = 0;
+  for (let i = 0; i < noiseBuf.length; i += 4) {
+    se += noiseBuf[i];
+    mean += noiseBuf[i + 1];
+  }
+  if (mean > 0) conv.add(spp, se / mean);
+}
+
 /** Run the a-trous passes over the accumulated picture; returns the texture to show. */
 function denoised(spp: number): WebGLTexture {
   const src = targets[cur];
@@ -885,7 +909,9 @@ function denoised(spp: number): WebGLTexture {
   return input;
 }
 
+let lightLabTraced = false;
 function tick(now: number) {
+  lightLabTraced = false;
   // nothing to draw while the canvas is hidden (another station is showing)
   if (!canvas.isConnected || canvas.clientWidth === 0 || canvas.clientHeight === 0) {
     last = now;
@@ -921,6 +947,7 @@ function tick(now: number) {
     benchWasLive = false;
     const cam = cameraOf(scene);
     tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cam, cam.th, false, scene.camera);
+    lightLabTraced = true;
   }
   raysTotal += rw * rh * (scene.bounces + 1);
   if (queryOpen && extTimer) {
@@ -929,6 +956,10 @@ function tick(now: number) {
   }
   cur = 1 - cur;
   frame++;
+  if (lightLabTraced && frame >= nextNoiseAt && useF32) {
+    measureNoise(frame);
+    nextNoiseAt = Math.max(frame + 1, Math.ceil(frame * 1.12));
+  }
 
   // the MIS station shows raw samples: its noise is the point
   const shown = denoise && misMode === null ? denoised(bench && now < benchLiveUntil ? 8 : frame) : targets[cur].tex;
@@ -952,7 +983,7 @@ function tick(now: number) {
   const dt = now - last;
   last = now;
   ema = ema ? ema * 0.95 + dt * 0.05 : dt;
-  if (frame % 10 === 0) ui.setStats(frame, rw * rh * frame * (scene.bounces + 1));
+  if (frame % 10 === 0) conv.setStats(frame, rw * rh * frame * (scene.bounces + 1));
   if (frame % 15 === 0 && !hud.hidden) {
     hud.textContent =
       `${renderer}\n` +

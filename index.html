@@ -16,6 +16,11 @@
             <div id="hud" hidden></div>
           </div>
         </div>
+        <div id="stage-stats">
+          <div class="stat t-int"><span class="stat-num" id="spp">0</span><span class="stat-lab">samples per pixel</span></div>
+          <div class="stat t-int"><span class="stat-num" id="rays">0</span><span class="stat-lab">rays traced</span></div>
+          <div class="conv"><canvas id="conv" aria-label="Noise as samples add up"></canvas><span class="conv-lab">noise <b id="noise"></b></span></div>
+        </div>
         <p id="explain" role="status" aria-live="polite"></p>
       </section>
 

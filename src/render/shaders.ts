@@ -593,3 +593,23 @@ void main() {
   vec3 c = texture(u_tex, (gl_FragCoord.xy - u_off) / u_res).rgb * u_dim;
   outColor = vec4(pow(aces(c), vec3(1.0 / 2.2)), 1.0);
 }`;
+
+
+// Convergence estimate: on a coarse grid of the picture, each pixel's standard error (the spread of its samples over
+// the square root of their number, from the denoiser's second-moment layer) and its mean, read back by the CPU.
+export const NOISE_N = 64;
+export const NOISE_FRAG = `#version 300 es
+precision highp float;
+uniform sampler2D u_color;
+uniform sampler2D u_g2;
+uniform float u_spp;
+out vec4 outColor;
+float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+void main() {
+  ivec2 size = textureSize(u_color, 0);
+  ivec2 q = ivec2(gl_FragCoord.xy / 64.0 * vec2(size));
+  vec4 g2 = texelFetch(u_g2, q, 0);
+  float m = lum(texelFetch(u_color, q, 0).rgb / max(g2.rgb, vec3(0.02)));
+  float var = max(g2.a - m * m, 0.0);
+  outColor = vec4(sqrt(var / max(u_spp, 1.0)), m, 0.0, 1.0);
+}`;
