@@ -1,4 +1,4 @@
-import type { Bvh } from './bvh';
+import type { Bvh, TextureImage } from './bvh';
 import type { MeshModelId } from './mesh';
 
 export const MATERIALS = ['diffuse', 'mirror', 'glass', 'metal', 'glowing'] as const;
@@ -33,7 +33,7 @@ export interface SceneState {
   /** material of each wall of the box (glass is not offered for walls) */
   walls: Record<WallId, MaterialId>;
   /** a triangle model (bunny, dragon) standing in for the balls; it takes object 0's color and material. null = the balls */
-  mesh: { id: MeshModelId; bvh: Bvh } | null;
+  mesh: { id: MeshModelId; bvh: Bvh; texture?: TextureImage } | null;
 }
 
 export type WallId = 'left' | 'right' | 'floor' | 'ceiling' | 'back';

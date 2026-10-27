@@ -20,8 +20,8 @@ import { initFluid } from './ui/fluid';
 import { initPick } from './ui/pick';
 import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
 import { createStations } from './stations';
-import { loadMesh, modelBvh, type MeshModelId, type ModelId } from './mesh';
-import { textureData, type Bvh } from './bvh';
+import { loadMesh, MODEL_TEXTURES, modelBvh, type MeshModelId, type ModelId } from './mesh';
+import { textureData, type Bvh, type TextureImage } from './bvh';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -110,6 +110,8 @@ const uTrace = {
   mesh: loc(traceProg, 'u_mesh'),
   bvh: loc(traceProg, 'u_bvh'),
   tri: loc(traceProg, 'u_tri'),
+  meshTex: loc(traceProg, 'u_meshTex'),
+  meshAlbedo: loc(traceProg, 'u_meshAlbedo'),
 };
 const uDen = {
   in: loc(denoiseProg, 'u_in'),
@@ -162,6 +164,45 @@ const benchData = {
 
 // Triangle models: one BVH per model, built on first use and kept; the GPU copy lives in two float textures.
 const bvhCache = new Map<MeshModelId, Bvh>();
+// Texture images of the textured models: a GL texture for the shader and the decoded pixels for the CPU picker.
+const imageCache = new Map<MeshModelId, { gl: WebGLTexture; cpu: TextureImage }>();
+const noTexture = (() => {
+  const t = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([200, 200, 200, 255]));
+  return t;
+})();
+
+async function loadImage(id: MeshModelId): Promise<{ gl: WebGLTexture; cpu: TextureImage } | null> {
+  const file = MODEL_TEXTURES[id];
+  if (!file) return null;
+  const cached = imageCache.get(id);
+  if (cached) return cached;
+  const res = await fetch(`${import.meta.env.BASE_URL}${file}`);
+  if (!res.ok) throw new Error(`could not load ${file}: ${res.status}`);
+  const bitmap = await createImageBitmap(await res.blob());
+  // the CPU copy (for taps and photon paths)
+  const c = document.createElement('canvas');
+  c.width = bitmap.width;
+  c.height = bitmap.height;
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(bitmap, 0, 0);
+  const cpu: TextureImage = { width: c.width, height: c.height, data: ctx.getImageData(0, 0, c.width, c.height).data };
+  // the GPU copy: plain bytes (the shader turns sRGB into linear the same way the CPU does), repeating, smooth
+  gl.activeTexture(gl.TEXTURE3);
+  const tex = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.activeTexture(gl.TEXTURE0);
+  bitmap.close();
+  const entry = { gl: tex, cpu };
+  imageCache.set(id, entry);
+  return entry;
+}
 let modelWanted: ModelId = 'balls';
 function floatTexture(data: Float32Array | null): WebGLTexture {
   gl.activeTexture(gl.TEXTURE3); // a spare unit, so uploading never disturbs the bound accumulation texture
@@ -192,6 +233,11 @@ function bindMesh() {
   gl.bindTexture(gl.TEXTURE_2D, meshTex.tri);
   gl.uniform1i(uTrace.bvh, 1);
   gl.uniform1i(uTrace.tri, 2);
+  const image = scene.mesh ? imageCache.get(scene.mesh.id) : undefined;
+  gl.activeTexture(gl.TEXTURE6);
+  gl.bindTexture(gl.TEXTURE_2D, image && scene.mesh?.texture ? image.gl : noTexture);
+  gl.uniform1i(uTrace.meshAlbedo, 6);
+  gl.uniform1i(uTrace.meshTex, image && scene.mesh?.texture ? 1 : 0);
   gl.uniform1i(uTrace.mesh, b && !bench ? 1 : 0);
   gl.activeTexture(gl.TEXTURE0);
 }
@@ -211,8 +257,9 @@ async function setModel(id: ModelId): Promise<void> {
     bvh = modelBvh(await loadMesh(id), id);
     bvhCache.set(id, bvh);
   }
+  const image = await loadImage(id);
   if (modelWanted !== id) return; // another model was picked while this one loaded
-  scene.mesh = { id, bvh };
+  scene.mesh = { id, bvh, ...(image ? { texture: image.cpu } : {}) };
   ui.syncModel();
   reset();
 }

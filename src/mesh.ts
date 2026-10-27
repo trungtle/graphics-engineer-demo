@@ -14,12 +14,19 @@ export interface Mesh {
   indices: Uint16Array;
   /** smooth normals, xyz per vertex */
   normals: Float32Array;
-  /** baked texture color per vertex (sRGB bytes, rgb), for the characters; null for plain models */
-  colors: Uint8Array | null;
+  /** texture coordinates of every triangle corner (u, v; v = 0 is the image's top row), for textured models */
+  uvs: Float32Array | null;
 }
 
 export type ModelId = 'balls' | 'bunny' | 'dragon' | 'spot' | 'bob' | 'blub';
 export type MeshModelId = Exclude<ModelId, 'balls'>;
+/** Texture images of the textured models (CC0, from the same archives as the meshes). */
+export const MODEL_TEXTURES: Partial<Record<MeshModelId, string>> = {
+  spot: 'models/spot.png',
+  bob: 'models/bob.png',
+  blub: 'models/blub.png',
+};
+
 export const MODEL_FILES: Record<MeshModelId, string> = {
   bunny: 'models/bunny.bin',
   dragon: 'models/dragon.bin',
@@ -29,6 +36,9 @@ export const MODEL_FILES: Record<MeshModelId, string> = {
 };
 
 const HEADER_BYTES = 4 + 4 + 4 + 24;
+/** range of the 16-bit texture coordinates (same as scripts/convert-mesh.mjs) */
+const UV_MIN = -0.25;
+const UV_MAX = 1.25;
 
 /** Area-weighted smooth vertex normals. */
 export function computeNormals(positions: Float32Array, indices: Uint16Array): Float32Array {
@@ -65,7 +75,7 @@ export function computeNormals(positions: Float32Array, indices: Uint16Array): F
 export function parseMesh(buf: ArrayBuffer): Mesh {
   const view = new DataView(buf);
   const magic = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
-  if (magic !== 'MSH1' && magic !== 'MSH2') throw new Error('not a mesh file');
+  if (magic !== 'MSH1' && magic !== 'MSH3') throw new Error('not a mesh file');
   const vertexCount = view.getUint32(4, true);
   const triangleCount = view.getUint32(8, true);
   const f = (k: number) => view.getFloat32(12 + k * 4, true);
@@ -81,8 +91,12 @@ export function parseMesh(buf: ArrayBuffer): Mesh {
   }
   const indices = new Uint16Array(triangleCount * 3);
   for (let t = 0; t < indices.length; t++, o += 2) indices[t] = view.getUint16(o, true);
-  // MSH2: a baked texture color per vertex follows the indices
-  const colors = magic === 'MSH2' ? new Uint8Array(buf.slice(o, o + vertexCount * 3)) : null;
+  // MSH3: texture coordinates for every triangle corner follow the indices
+  let uvs: Float32Array | null = null;
+  if (magic === 'MSH3') {
+    uvs = new Float32Array(triangleCount * 6);
+    for (let k = 0; k < uvs.length; k++, o += 2) uvs[k] = UV_MIN + (view.getUint16(o, true) / 65535) * (UV_MAX - UV_MIN);
+  }
 
   return {
     vertexCount,
@@ -92,7 +106,7 @@ export function parseMesh(buf: ArrayBuffer): Mesh {
     positions,
     indices,
     normals: computeNormals(positions, indices),
-    colors,
+    uvs,
   };
 }
 
@@ -118,5 +132,5 @@ export const MODEL_PLACEMENT: Record<MeshModelId, Placement> = {
 /** The placed model's BVH, ready for the shader and the CPU picker. */
 export function modelBvh(mesh: Mesh, id: MeshModelId): Bvh {
   const { positions, normals } = placeMesh(mesh, MODEL_PLACEMENT[id]);
-  return buildBvh(positions, normals, mesh.indices, mesh.colors);
+  return buildBvh(positions, normals, mesh.indices, mesh.uvs);
 }

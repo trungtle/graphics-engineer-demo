@@ -45,7 +45,9 @@ uniform float u_tgtH;
 // ---- triangle mesh (bunny, dragon): replaces the three balls, uses object 0's color and material ----
 uniform int u_mesh;
 uniform highp sampler2D u_bvh;      // 2 texels per node: (min, a), (max, b); leaf: a = first tri, b = count; inner: a = right child
-uniform highp sampler2D u_tri;      // 6 texels per triangle: v0, e1, e2, n0, n1, n2
+uniform highp sampler2D u_tri;      // 6 texels per triangle: v0, e1, e2, n0, n1, n2 (the w's: corner texture coordinates)
+uniform int u_meshTex;              // 1: the model has a texture image
+uniform sampler2D u_meshAlbedo;     // its texture image (sRGB bytes)
 uniform sampler2D u_prevG1;
 uniform sampler2D u_prevG2;
 layout(location = 0) out vec4 outColor;
@@ -102,12 +104,6 @@ float boxT(vec3 ro, vec3 inv, int node) {
   float tn = max(max(lo.x, lo.y), lo.z);
   float tf = min(min(hi.x, hi.y), hi.z);
   return tf >= max(tn, 0.0) ? tn : 1e30;
-}
-
-// sRGB bytes packed as r * 65536 + g * 256 + b, to linear
-vec3 unpackColor(float packed) {
-  int p = int(packed + 0.5);
-  return pow(vec3(float(p >> 16), float((p >> 8) & 255), float(p & 255)) / 255.0, vec3(2.2));
 }
 
 void meshHit(vec3 ro, vec3 rd, inout Hit h) {
@@ -168,10 +164,12 @@ void meshHit(vec3 ro, vec3 rd, inout Hit h) {
   h.lamp = -1;
   h.n = n;
   h.albedo = u_objCol[0].rgb;
-  // characters carry their baked texture color in the w of each corner normal (packed sRGB, -1 = none)
-  vec3 cw = vec3(texAt(u_tri, q + 3).w, texAt(u_tri, q + 4).w, texAt(u_tri, q + 5).w);
-  if (cw.x >= 0.0) {
-    h.albedo = (1.0 - bu - bv) * unpackColor(cw.x) + bu * unpackColor(cw.y) + bv * unpackColor(cw.z);
+  // textured models (the characters): the corners' texture coordinates sit in the six spare w's
+  if (u_meshTex == 1) {
+    vec2 uv = (1.0 - bu - bv) * vec2(texAt(u_tri, q).w, texAt(u_tri, q + 1).w) +
+              bu * vec2(texAt(u_tri, q + 2).w, texAt(u_tri, q + 3).w) +
+              bv * vec2(texAt(u_tri, q + 4).w, texAt(u_tri, q + 5).w);
+    h.albedo = pow(textureLod(u_meshAlbedo, uv, 0.0).rgb, vec3(2.2));
   }
   int m = u_objMat[0];
   h.mat = m;

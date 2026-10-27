@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { intersectBvh, MAX_DEPTH, placeMesh, textureData, TEX_W, type Bvh } from './bvh';
+import { intersectBvh, MAX_DEPTH, placeMesh, sampleTexture, textureData, TEX_W, type Bvh } from './bvh';
 import { MODEL_PLACEMENT, modelBvh, parseMesh, type Mesh } from './mesh';
 import { mulberry32, type Vec3 } from './render/cpu';
 
@@ -125,23 +125,53 @@ describe.each(['bunny', 'dragon', 'spot', 'bob', 'blub'] as const)('%s BVH', (na
   });
 });
 
-describe('character colors', () => {
-  it.each(['spot', 'bob', 'blub'] as const)('%s has a baked color per vertex, and hits return it', (name) => {
+describe('character textures', () => {
+  it.each(['spot', 'bob', 'blub'] as const)('%s has texture coordinates for every corner, a PNG next to it, and hits return them', (name) => {
     const mesh = load(name);
-    expect(mesh.colors).not.toBeNull();
-    expect(mesh.colors!.length).toBe(mesh.vertexCount * 3);
+    expect(mesh.uvs).not.toBeNull();
+    expect(mesh.uvs!.length).toBe(mesh.triangleCount * 6);
+    const png = readFileSync(`public/models/${name}.png`);
+    expect(png.toString('ascii', 1, 4)).toBe('PNG');
+    expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(1024); // width: the full texture, not a thumbnail
     const bvh = modelBvh(mesh, name);
     const { ro, rd } = downHit(bvh);
-    const h = intersectBvh(bvh, ro, rd);
-    expect(h).not.toBeNull();
-    for (const c of h!.color!) {
-      expect(c).toBeGreaterThanOrEqual(0);
-      expect(c).toBeLessThanOrEqual(1);
+    const h = intersectBvh(bvh, ro, rd)!;
+    for (const c of h.uv) {
+      expect(c).toBeGreaterThanOrEqual(-0.25);
+      expect(c).toBeLessThanOrEqual(1.25);
     }
   });
 
-  it('plain models have no color', () => {
-    const bvh = modelBvh(load('bunny'), 'bunny');
-    expect(intersectBvh(bvh, [0, -0.6, 0.95], [0, 0, -1])!.color).toBeNull();
+  it('a hit at a triangle corner returns that corner texture coordinates', () => {
+    const mesh = load('spot');
+    const bvh = modelBvh(mesh, 'spot');
+    // aim at a point just inside corner 0 of the first leaf triangle, from just in front of it
+    const T = bvh.tris;
+    const v0: Vec3 = [T[0], T[1], T[2]];
+    const e1: Vec3 = [T[4], T[5], T[6]];
+    const e2: Vec3 = [T[8], T[9], T[10]];
+    const p: Vec3 = [0, 1, 2].map((k) => v0[k] + 0.01 * e1[k] + 0.01 * e2[k]) as Vec3;
+    const n: Vec3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const l = Math.hypot(...n);
+    const ro: Vec3 = [p[0] + (n[0] / l) * 1e-3, p[1] + (n[1] / l) * 1e-3, p[2] + (n[2] / l) * 1e-3];
+    const h = intersectBvh(bvh, ro, [-n[0] / l, -n[1] / l, -n[2] / l])!;
+    expect(h.tri).toBe(0);
+    expect(h.uv[0]).toBeCloseTo(T[3], 2);
+    expect(h.uv[1]).toBeCloseTo(T[7], 2);
+  });
+
+  it('texture lookup: bilinear, wraps around, and turns sRGB into linear', () => {
+    // 2x1 image: black, white
+    const img = { width: 2, height: 1, data: new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]) };
+    expect(sampleTexture(img, 0.25, 0.5)[0]).toBeCloseTo(0, 6);
+    expect(sampleTexture(img, 0.75, 0.5)[0]).toBeCloseTo(1, 6);
+    expect(sampleTexture(img, 0.5, 0.5)[0]).toBeCloseTo(0.5, 6);
+    expect(sampleTexture(img, 1.75, 0.5)[0]).toBeCloseTo(1, 6);
+    const mid = { width: 1, height: 1, data: new Uint8ClampedArray([128, 128, 128, 255]) };
+    expect(sampleTexture(mid, 0.5, 0.5)[0]).toBeCloseTo(Math.pow(128 / 255, 2.2), 6);
+  });
+
+  it('plain models have no texture coordinates', () => {
+    expect(load('bunny').uvs).toBeNull();
   });
 });

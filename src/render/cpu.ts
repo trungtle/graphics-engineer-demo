@@ -2,7 +2,7 @@
 // Keep in sync with TRACE_FRAG in shaders.ts (camera, room, spheres, the mesh via bvh.ts, materials).
 // Used for tap-picking and for recording one light path for "Be a photon".
 import { lampAt, type SceneState, type WallId } from '../scene';
-import { intersectBvh } from '../bvh';
+import { intersectBvh, sampleTexture } from '../bvh';
 
 export type Vec3 = [number, number, number];
 
@@ -159,7 +159,7 @@ export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null 
     const mh = intersectBvh(scene.mesh.bvh, ro, rd, best ? best.t : Infinity);
     if (mh) {
       const o = scene.objects[0];
-      const albedo = mh.color ?? o.color;
+      const albedo = scene.mesh.texture ? sampleTexture(scene.mesh.texture, mh.uv[0], mh.uv[1]) : o.color;
       best = { t: mh.t, p: add(ro, mul(rd, mh.t)), n: mh.n, surface: 'object', objectIndex: 0, mat: o.mat, albedo, emissive: o.mat === 4 };
     }
     return best;
