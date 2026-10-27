@@ -1,13 +1,16 @@
 // CPU mirror of the GPU path tracer's scene intersection and scattering.
 // Keep in sync with TRACE_FRAG in shaders.ts (camera, room, spheres, the mesh via bvh.ts, materials).
 // Used for tap-picking and for recording one light path for "Be a photon".
-import { lampAt, type SceneState } from '../scene';
+import { lampAt, type SceneState, type WallId } from '../scene';
 import { intersectBvh } from '../bvh';
 
 export type Vec3 = [number, number, number];
 
 export const CAMERA_DIST = 3.4;
 export const CAMERA_TH = 0.45;
+/** Glowing things: emitted radiance is the color times this (same as the shader). */
+export const EMISSIVE_OBJ = 6;
+export const EMISSIVE_WALL = 1.5;
 const GLASS_IOR = 1.5;
 const METAL_ROUGH = 0.18;
 const EPS = 1e-3;
@@ -146,7 +149,9 @@ export function intersect(ro: Vec3, rd: Vec3, scene: SceneState): CpuHit | null 
       surface = 'back';
       albedo = [0.78, 0.78, 0.78];
     }
-    best = { t, p, n, surface, objectIndex: lamp, mat: 0, albedo, emissive };
+    // the walls can be made shiny or glowing too (the lamp patch stays a lamp)
+    const mat = surface === 'light' ? 0 : scene.walls[surface as WallId];
+    best = { t, p, n, surface, objectIndex: lamp, mat, albedo, emissive: emissive || mat === 4 };
   }
 
   if (scene.mesh) {

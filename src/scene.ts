@@ -30,9 +30,16 @@ export interface SceneState {
   light: LightState;
   /** orbit camera angles in radians (0,0 = straight on) */
   camera: { yaw: number; pitch: number };
+  /** material of each wall of the box (glass is not offered for walls) */
+  walls: Record<WallId, MaterialId>;
   /** a triangle model (bunny, dragon) standing in for the balls; it takes object 0's color and material. null = the balls */
   mesh: { id: MeshModelId; bvh: Bvh } | null;
 }
+
+export type WallId = 'left' | 'right' | 'floor' | 'ceiling' | 'back';
+/** Order of the walls in the shader's u_wallMat. */
+export const WALLS: WallId[] = ['left', 'right', 'floor', 'ceiling', 'back'];
+const plainWalls = (): Record<WallId, MaterialId> => ({ left: 0, right: 0, floor: 0, ceiling: 0, back: 0 });
 
 export const LIGHT_REF_HALF = 0.3;
 export const MAX_LIGHTS = 3;
@@ -114,6 +121,7 @@ export function defaultScene(): SceneState {
     ],
     lights,
     light: lights[0],
+    walls: plainWalls(),
     camera: { yaw: 0, pitch: 0 },
     mesh: null,
   };
@@ -125,6 +133,7 @@ export function resetScene(s: SceneState): void {
   s.bounces = d.bounces;
   d.objects.forEach((o, i) => Object.assign(s.objects[i], o));
   setLights(s, 1);
+  s.walls = plainWalls();
   Object.assign(s.camera, d.camera);
   s.mesh = null;
 }

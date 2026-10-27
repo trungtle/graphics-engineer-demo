@@ -1,4 +1,4 @@
-import { cameraOf, project, recordPath, type PathSegment, type Vec3 } from '../render/cpu';
+import { cameraOf, EMISSIVE_OBJ, EMISSIVE_WALL, project, recordPath, type PathSegment, type Vec3 } from '../render/cpu';
 import { lightRadiance, type SceneState } from '../scene';
 
 // Timing (ms): each segment is a travel phase then a short dwell where the hit glows.
@@ -34,16 +34,21 @@ export function classify(path: PathSegment[]): Outcome {
   return 'object';
 }
 
-/** The lamp a path ends on (the selected lamp when it ends elsewhere). */
-export function pathLamp(path: PathSegment[], scene: SceneState) {
+/** Radiance of whatever the path ended on: a lamp, a glowing object or a glowing wall (the selected lamp otherwise). */
+export function pathEmission(path: PathSegment[], scene: SceneState): Vec3 {
   const last = path[path.length - 1];
-  return last?.event === 'light' && last.objectIndex >= 0 ? scene.lights[last.objectIndex] ?? scene.light : scene.light;
+  if (last?.event === 'light') {
+    if (last.surface === 'light') return lightRadiance(scene.lights[last.objectIndex] ?? scene.light);
+    const k = last.surface === 'object' ? EMISSIVE_OBJ : EMISSIVE_WALL;
+    return [last.albedo[0] * k, last.albedo[1] * k, last.albedo[2] * k];
+  }
+  return lightRadiance(scene.light);
 }
 
 /** Linear RGB this photon brings back to the pixel: lamp radiance times every surface color on the way. */
 export function pathColor(path: PathSegment[], scene: SceneState): Vec3 {
   if (classify(path) !== 'light') return [0, 0, 0];
-  const L = lightRadiance(pathLamp(path, scene));
+  const L = pathEmission(path, scene);
   let r = L[0];
   let g = L[1];
   let b = L[2];
@@ -204,7 +209,7 @@ export function initPhoton(opts: {
   }
 
   const lampHue = (path: PathSegment[]): Vec3 => {
-    const L = lightRadiance(pathLamp(path, scene));
+    const L = pathEmission(path, scene);
     const m = Math.max(L[0], L[1], L[2]);
     return [L[0] / m, L[1] / m, L[2] / m];
   };

@@ -8,14 +8,16 @@ import {
   defaultScene,
   lightRadiance,
   MATERIALS,
+  WALLS,
   type MaterialId,
 } from './scene';
-import { cameraLookAlong, cameraOf, ceilingPoint, pick, type Camera } from './render/cpu';
+import { cameraLookAlong, cameraOf, cameraRay, ceilingPoint, pick, project, type Camera } from './render/cpu';
 import { initControls } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
 import { initBench } from './ui/bench';
 import { initFluid } from './ui/fluid';
+import { initPick } from './ui/pick';
 import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
 import { createStations } from './stations';
 import { loadMesh, modelBvh, type MeshModelId, type ModelId } from './mesh';
@@ -78,6 +80,7 @@ const uTrace = {
   objCol: loc(traceProg, 'u_objCol'),
   objMat: loc(traceProg, 'u_objMat'),
   nLights: loc(traceProg, 'u_nLights'),
+  wallMat: loc(traceProg, 'u_wallMat'),
   lights: loc(traceProg, 'u_lights'),
   lightCols: loc(traceProg, 'u_lightCols'),
   camPos: loc(traceProg, 'u_camPos'),
@@ -172,6 +175,7 @@ function bindMesh() {
 /** Show the balls, the bunny or the dragon. Models load (and their BVH is built) the first time they are picked. */
 async function setModel(id: ModelId): Promise<void> {
   modelWanted = id;
+  picker.select(null); // the selected surface is gone with the old model
   if (id === 'balls') {
     scene.mesh = null;
     ui.syncModel();
@@ -294,8 +298,36 @@ function cycleMaterial(i: number) {
   const o = scene.objects[i];
   o.mat = ((o.mat + 1) % MATERIALS.length) as MaterialId;
   eq.highlight(o.mat === 4 ? 'le' : 'fr');
+  picker.refresh();
   reset();
 }
+
+// Tap a pixel: select the surface under it (material bar under the picture). Tap f_r: show its BRDF lobe there.
+const picker = initPick({
+  scene,
+  viewport: document.getElementById('viewport')!,
+  onMaterial: (m) => {
+    eq.highlight(m === 4 ? 'le' : 'fr');
+    reset();
+  },
+});
+eq.onTap((term) => {
+  if (term !== 'fr') return;
+  picker.lobe = !picker.lobe;
+  eq.setSticky(picker.lobe ? 'fr' : null);
+  // nothing selected yet: pick the front of the first object so there is something to show
+  if (picker.lobe && !picker.hit) {
+    const cam = cameraOf(scene);
+    const r = canvas.getBoundingClientRect();
+    const aspect = r.width / r.height;
+    const o = scene.objects[0];
+    const target: [number, number, number] = scene.mesh
+      ? [(scene.mesh.bvh.bboxMin[0] + scene.mesh.bvh.bboxMax[0]) / 2, (scene.mesh.bvh.bboxMin[1] + scene.mesh.bvh.bboxMax[1]) / 2, scene.mesh.bvh.bboxMax[2] * 0.5]
+      : [o.pos[0], o.pos[1] + o.radius * 0.4, o.pos[2] + o.radius * 0.9];
+    const [x, y] = project(target, aspect, cam);
+    picker.select(cameraRay(x, y, aspect, cam));
+  }
+});
 
 // Pointer gestures on the picture:
 //  - press the lamp and drag: move it along the ceiling
@@ -405,16 +437,13 @@ canvas.addEventListener('pointerup', (e) => {
     photon.trace(nx, ny);
     return;
   }
-  if (h?.surface === 'object') {
-    cycleMaterial(h.objectIndex);
+  if (h) {
+    picker.select(cameraRay(nx, ny, aspect, cameraOf(scene)));
+    eq.highlight(h.surface === 'light' || h.emissive ? 'le' : 'fr');
     lastTap = null;
     return;
   }
-  if (h?.surface === 'light') {
-    eq.highlight('le');
-    lastTap = null;
-    return;
-  }
+  picker.select(null);
   const now = performance.now();
   if (lastTap && now - lastTap.t < DOUBLE_TAP_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
     resetView();
@@ -563,6 +592,7 @@ function tracePass(
   gl.uniform1iv(uTrace.objMat, scene.objects.map((o) => o.mat));
   const lamps = [0, 1, 2].map((i) => scene.lights[Math.min(i, scene.lights.length - 1)]);
   gl.uniform1i(uTrace.nLights, scene.lights.length);
+  gl.uniform1iv(uTrace.wallMat, WALLS.map((w) => scene.walls[w]));
   gl.uniform4fv(uTrace.lights, lamps.flatMap((l) => [l.x, l.z, 0, l.half]));
   gl.uniform3fv(uTrace.lightCols, lamps.flatMap((l) => lightRadiance(l)));
   gl.uniform3fv(uTrace.camPos, cam.pos);
@@ -671,6 +701,7 @@ function tick(now: number) {
       `frame ${ema.toFixed(1)} ms (${(1000 / ema).toFixed(0)} fps)  gpu ${Number.isNaN(gpuMs) ? 'n/a' : gpuMs.toFixed(1) + ' ms'}  spp ${frame}  ~${((rw * rh * frame * (scene.bounces + 1)) / 1e9).toFixed(2)}B rays\n` +
       `tap: pick (${pickedText || 'none'})   s: scale 1/0.5   keys 0-8: bounces   q/w/e: cycle object material   ?fmt=16: half-float`;
   }
+  if (!bench) picker.draw();
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

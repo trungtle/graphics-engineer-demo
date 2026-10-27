@@ -16,6 +16,7 @@ uniform int u_bounces;
 uniform vec4 u_objPos[3];   // xyz center, w radius
 uniform vec4 u_objCol[3];   // rgb color
 uniform int u_objMat[3];
+uniform int u_wallMat[5];    // left, right, floor, ceiling, back: 0 matte, 1 mirror, 3 metal, 4 glowing
 uniform int u_nLights;      // ceiling lamps (1 to 3); later lamps win where they overlap
 uniform vec4 u_lights[3];
 uniform vec3 u_lightCols[3];
@@ -55,6 +56,7 @@ uint pcg(uint v) {
 float rnd() { rngState = pcg(rngState); return float(rngState) * (1.0 / 4294967296.0); }
 
 const float EMISSIVE_OBJ = 6.0;
+const float EMISSIVE_WALL = 1.5;
 const float METAL_ROUGH = 0.18;
 const float GLASS_IOR = 1.5;
 
@@ -316,12 +318,15 @@ Hit scene(vec3 ro, vec3 rd) {
   if (!exitFront) {
     h.t = t;
     vec3 p = ro + rd * t;
+    int wi;
     if (t == tx) {
       h.n = vec3(-sign(rd.x), 0.0, 0.0);
       h.albedo = rd.x < 0.0 ? vec3(0.75, 0.12, 0.10) : vec3(0.12, 0.62, 0.15);
+      wi = rd.x < 0.0 ? 0 : 1;
     } else if (t == ty) {
       h.n = vec3(0.0, -sign(rd.y), 0.0);
       h.albedo = vec3(0.78);
+      wi = rd.y < 0.0 ? 2 : 3;
       // written out instead of a loop: scene() is inlined into the bounce loop, and loops in here can make a
       // driver's shader compiler take so long that the browser's GPU process hangs
       if (rd.y > 0.0) {
@@ -332,6 +337,12 @@ Hit scene(vec3 ro, vec3 rd) {
     } else {
       h.n = vec3(0.0, 0.0, 1.0);
       h.albedo = vec3(0.78);
+      wi = 4;
+    }
+    // the walls can be made shiny or glowing too (the lamp patch stays a lamp)
+    if (dot(h.emit, h.emit) == 0.0) {
+      h.mat = u_wallMat[wi];
+      if (h.mat == 4) h.emit = h.albedo * EMISSIVE_WALL;
     }
   }
   if (u_mesh == 1) meshHit(ro, rd, h);

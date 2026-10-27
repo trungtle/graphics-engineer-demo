@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8"><title>shader check</title></head><body>
+<script type="module">
+const { VERT, TRACE_FRAG } = await import('./src/render/shaders.ts');
+const gl = document.createElement('canvas').getContext('webgl2');
+const sh = (t, s) => { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); return x; };
+const t0 = performance.now();
+const p = gl.createProgram();
+gl.attachShader(p, sh(gl.VERTEX_SHADER, VERT));
+// a comment with a random number defeats the browser's shader cache
+gl.attachShader(p, sh(gl.FRAGMENT_SHADER, TRACE_FRAG + '\n// ' + Math.random()));
+gl.linkProgram(p);
+const ok = gl.getProgramParameter(p, gl.LINK_STATUS);
+const linkMs = Math.round(performance.now() - t0);
+gl.useProgram(p);
+gl.bindVertexArray(gl.createVertexArray());
+gl.viewport(0, 0, 4, 4);
+const t1 = performance.now();
+gl.drawArrays(gl.TRIANGLES, 0, 3);
+gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+window.result = { ok, linkMs, firstDrawMs: Math.round(performance.now() - t1) };
+</script></body></html>
