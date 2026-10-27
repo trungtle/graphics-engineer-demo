@@ -132,15 +132,32 @@ export function initControls(opts: {
     neeBtn.hidden = true;
     denBtn.hidden = true;
   }
-  // the ray sketch takes whatever height the controls leave; with less than a readable amount it steps aside
+  // auto-scale: shrink the whole panel (down to ZOOM_MIN) until the controls fit and the ray sketch has a readable
+  // height; with no such size the sketch steps aside. Runs on window resize and orientation change.
   const rayPanel = document.getElementById('ray-panel')!;
   const panelEl = document.getElementById('panel')!;
-  const fitSketch = () => {
+  const ZOOM_MIN = 0.75;
+  const SKETCH_MIN = 110; // screen px
+  const fitPanel = () => {
+    const parts = Array.from(panelEl.children) as HTMLElement[];
+    const setZoom = (z: number) => parts.forEach((el) => (el.style.zoom = z === 1 ? '' : String(z)));
+    const fits = (needSketch: boolean) =>
+      panelEl.scrollHeight <= panelEl.clientHeight + 1 && (!needSketch || rayPanel.getBoundingClientRect().height >= SKETCH_MIN);
+    if (panelEl.clientHeight === 0) return;
     rayPanel.hidden = false;
-    if (panelEl.clientHeight > 0 && (panelEl.scrollHeight > panelEl.clientHeight + 1 || rayPanel.offsetHeight < 100)) rayPanel.hidden = true;
+    for (let z = 1; z >= ZOOM_MIN - 1e-6; z -= 0.025) {
+      setZoom(z);
+      if (fits(true)) return;
+    }
+    // no scale shows the sketch: hide it and scale only as far as the controls need
+    rayPanel.hidden = true;
+    for (let z = 1; z >= ZOOM_MIN - 1e-6; z -= 0.025) {
+      setZoom(z);
+      if (fits(false)) return;
+    }
   };
-  window.addEventListener('resize', fitSketch);
-  requestAnimationFrame(fitSketch);
+  window.addEventListener('resize', fitPanel);
+  requestAnimationFrame(fitPanel);
 
   // camera: field of view, aperture (depth of field) and focus
   const fovEl = root.querySelector<HTMLInputElement>('#cam-fov')!;
