@@ -151,3 +151,34 @@ images and pixel-diff checks for the rest of the roadmap.
 
 Verify: two captures of the same preset at the same spp are byte-identical on
 the same machine.
+
+<!--task
+id: RND-008
+status: done
+epic: sampling
+deps: [RND-003]
+cl: 2c0cfc0
+-->
+### RND-008 — Light sampling with MIS
+
+Requested 2026-10-27. Matte bounces already sampled cosine-weighted directions. Now each matte bounce also sends a shadow ray to a random point on a random ceiling lamp (next-event estimation). The two strategies are combined with the power heuristic, so a lamp found by a bounce is weighted against having been sampled directly. Glowing balls and walls are not light-sampled and keep weight 1. The shadow ray goes through the same single `scene()` call as the path (the loop alternates path rays and shadow rays, 18 iterations at most), so the shader still compiles quickly. Off for the Mirrors bench, which has no ceiling lamps. `?nee=0` or the n key turns it off for comparison.
+
+Measured (desktop, 354x383, default scene): mean brightness after 3,000 samples is 0.34952 on and 0.34951 off, so it is unbiased. Error against a 3,000-sample reference at about 26 samples: 0.046 on vs 0.241 off, about 5x lower, the quality of roughly 25x more samples. Both run at the 240 fps display cap on the desktop GPU; the cost per sample on iPad is not measured yet. Photon mode and the all-samples view still show plain random-bounce paths (cpu.ts is unchanged): that is the idea being taught, and the GPU picture just gets there faster.
+
+<!--task
+id: RND-009
+status: done
+epic: denoise
+deps: [RND-008]
+cl: 044d08f
+-->
+### RND-009 — Denoiser
+
+An edge-aware a-trous filter, a simple SVGF without the temporal part (`DENOISE_FRAG`).
+- **Extra data:** the trace pass also writes, accumulated like the color, the normal and path distance of the first matte surface each pixel sees, looking through mirrors and glass, so reflections keep their edges. It also writes that surface's albedo and the second moment of the demodulated lighting.
+- **Filter:** four passes with gaps of 1, 2, 4 and 8 pixels smooth the lighting divided by albedo, so textures stay sharp. They stop at edges in normal, distance and brightness.
+- **Brightness tolerance:** 2x the pixel's noise, averaged over its 3x3 neighbors so that a pixel whose few samples all came out dark is still smoothed.
+- **Fade-out:** the filter hands over to the raw picture between 8 and 96 samples, so the final image is exactly the path tracer's.
+- **Toggle:** `?denoise=0` or the d key.
+
+First version tuning (2026-10-27): five passes with a 4x brightness tolerance were too blurry; the user noticed. Measured after tuning (error against a 4,000-sample reference): 4 spp 0.026 vs raw 0.051, 16 spp 0.014 vs 0.026, 64 spp 0.010 vs 0.013, identical from 128 spp. At 2-3 spp the filter has more error than raw, though it looks smoother. The shader now compiles fresh in 1.16 s on the desktop (texture lookup and three outputs); check the iPad.

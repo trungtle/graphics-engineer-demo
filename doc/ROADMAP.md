@@ -54,7 +54,7 @@ in the roadmap.
 
 | Area | Doc | Active (todo) | Done | Notes |
 |------|-----|----------------|------|-------|
-| Renderer | [renderer.md](roadmap/renderer.md) | 4 | 3 | Scene/materials/bounces + CPU picker done (RND-003/004/006); cpu.ts must mirror shaders.ts on desktop GPU; RND-001 still needs iPad + Intel Mac numbers (float-buffer format pending) |
+| Renderer | [renderer.md](roadmap/renderer.md) | 4 | 5 | Scene/materials/bounces + CPU picker done (RND-003/004/006); light sampling with MIS (RND-008, ~25x fewer samples for the same noise) and an edge-aware denoiser (RND-009) done; RND-001 still needs iPad + Intel Mac numbers |
 | Interaction | [interaction.md](roadmap/interaction.md) | 1 | 8 | All v1 interactions done (INT-001..007, incl. All-samples view and photon first-person view); INT-008 pixel pick with material bar and BRDF lobe; only stretch INT-S1 remains |
 | UI, Equation & Idle | [ui.md](roadmap/ui.md) | 0 | 5 | All done (UI-001..005); careers strip (UI-005) later removed and presenter panel (UI-006) dropped by user: no explanatory text, presenter explains onsite. Debug HUD only with ?debug |
 | Deploy & Booth | [deploy.md](roadmap/deploy.md) | 4 | 2 | OPS-001/002 done; live on GitHub Pages (project URL redirects to the account's custom domain); offline PWA mandatory |
