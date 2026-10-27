@@ -6,6 +6,8 @@ The first two stations share one renderer: the GL path tracer gains a set of on/
 
 ## Decisions
 
+- **MIS tab added** (2026-10-27, user): Veach's scene as its own station (STN-010), between Mirrors and Water.
+
 - **Shader compile freeze fixed** (2026-10-27): the build with several lamps froze the browser on load. Measured on Windows/ANGLE (D3D11, RTX 4070 Ti), the live shader took 99.6 s to link and then failed, which hangs the GPU process and leaves WebGL turned off until the browser restarts. The fixed shader links in 742 ms uncached. Fix: no loops inside `scene()` (it is inlined into the bounce loop), and the unused era/feature shading was removed, so `scene()` has one call site instead of five. Rule: keep `scene()` loop-free, give it a single call site, and time a fresh compile and first draw before shipping shader changes (open `shader-check.html` on the dev server).
 
 - **Water station added** (2026-10-23, user: "a new tab, running fluid simulation in a tank"): a 2D FLIP simulation on the CPU drawn on a 2D canvas (no GL). It runs on any device and needs no second GL context. Interactions: drag to stir with a ball, a tilt slider (the tank turns on screen and the water stays level), Splash, Reset. Views: Water, Particles, Grid. No explanatory text; readouts only.
@@ -156,3 +158,24 @@ cl: ffd385f
 `src/fluid.ts` (`Flip`): particles plus a 72x45 staggered grid; each step moves the particles, separates them with a spatial hash, handles the walls and the stirring ball, transfers velocities to the grid, then runs 50 Gauss-Seidel pressure iterations with drift compensation, and transfers back with a FLIP ratio of 0.9. The tank starts as a dam break of 2,640 particles. Tests: 7 in `src/fluid.test.ts` (dam breaks and stays in the tank, nothing lost or blown up, volume kept within 15-25% after 10 s of sloshing, tilt moves the water to the low side, the ball pushes water away, splash, reset). The step takes 1.5 ms on the desktop CPU. `src/ui/fluid.ts` draws the water by splatting the particles into a 288x180 density image, thresholded smoothly and shaded deeper-darker with pale foam where the water is fast. The Particles view colors particles by speed; the Grid view shows the cells the solver treats as water. Ball speed is capped at 5 m/s so a flick splashes instead of exploding. The simulation runs only while the tab is shown, and attract mode resets it.
 
 Verified (2026-10-23) on a stand-alone check page: in the browser pane, WebGL2 was unavailable after a GPU hang, so the full app could not start there. Verified there: stirring, tilt to 20 degrees, Splash, the Particles view, about 58 steps/s, and the panel fits at 1024x768 and 768x1024. Still to check: the tab inside the full app, iPad speed (BOOTH-002).
+
+<!--task
+id: STN-010
+status: done
+epic: mis
+deps: [RND-008]
+cl: 2cb1092
+-->
+### STN-010 — MIS: Veach's scene
+
+Requested 2026-10-27 ("add the Veach scene, to explain MIS"). It is Veach's thesis figure (1997, fig. 9.2): four plates from rough (Phong exponent 12) to nearly mirror-like (5000) reflect four round lamps of radius 0.03 to 0.9 that all give off the same power (radiance scales with 1/r^2). The plates are tilted so the camera sees the lamp row in each (`src/veach.ts`, 6 tests: equal power, mirror law at each plate, MIS weights sum to 1, the Phong pdf integrates to 1, the lamp-cone pdf stays finite for the tiny lamp).
+
+It renders direct light only, with a separate small program (`src/render/veach-shader.ts`) compiled when the tab first opens, so it adds nothing to the main shader's compile time. There are four modes:
+- BSDF sampling: a direction from the plate's lobe.
+- Light sampling: a direction in the cone toward a random lamp.
+- MIS: both, with the power heuristic.
+- Compare (default): all three stacked as full-width rows with name tags, BSDF on top and MIS at the bottom.
+
+Stacking was chosen over side-by-side thirds because each third would show different lamps. The denoiser is off here: the noise is the point. The program writes the denoiser's two extra outputs as filler; without them the draw failed with INVALID_OPERATION on this browser.
+
+Verified (desktop): BSDF sampling is speckled on the rough plates, light sampling is speckled on the shiny back plate under the big lamp, MIS is clean everywhere. Six-viewport check clean with four tabs.
