@@ -46,7 +46,12 @@ uniform float u_tgtH;
 uniform int u_mesh;
 uniform highp sampler2D u_bvh;      // 2 texels per node: (min, a), (max, b); leaf: a = first tri, b = count; inner: a = right child
 uniform highp sampler2D u_tri;      // 6 texels per triangle: v0, e1, e2, n0, n1, n2
-out vec4 outColor;
+uniform sampler2D u_prevG1;
+uniform sampler2D u_prevG2;
+layout(location = 0) out vec4 outColor;
+// for the denoiser, accumulated like the color: the first matte surface the pixel sees (through any mirror or glass)
+layout(location = 1) out vec4 outG1;  // its normal (facing the camera), distance along the path
+layout(location = 2) out vec4 outG2;  // its albedo (tinted by mirrors and glass on the way), second moment of the lighting
 
 uint rngState;
 uint pcg(uint v) {
@@ -375,6 +380,12 @@ void main() {
   float t0 = (1.0 - ro.z) / rd.z;
   vec3 p0 = ro + rd * t0;
   vec3 L = vec3(0.0);
+  bool gDone = false;
+  vec3 gN = vec3(0.0);
+  float gZ = 0.0;
+  vec3 gA = vec3(1.0);
+  vec3 gTint = vec3(1.0);
+  float pathLen = 0.0;
   bool enter = u_inside == 1 || (rd.z < -1e-3 && abs(p0.x) <= 1.0 && abs(p0.y) <= 1.0);
   if (enter) {
     if (u_inside == 0) ro = p0;
@@ -401,7 +412,20 @@ void main() {
       }
       if (h.t > 1e19) {
         if (u_bench == 1) L += thr * benchEnv(rd);
+        if (!gDone) { gDone = true; gZ = 1e4; gA = gTint; gN = -rd; }
         break;
+      }
+      pathLen += h.t;
+      if (!gDone) {
+        bool glows = dot(h.emit, h.emit) > 0.0;
+        if (glows || (h.mat != 1 && h.mat != 2)) {
+          gDone = true;
+          gN = dot(rd, h.n) > 0.0 ? -h.n : h.n;
+          gZ = pathLen;
+          gA = glows ? gTint : gTint * h.albedo;
+        } else {
+          gTint *= h.albedo;
+        }
       }
       // a lamp found by a matte bounce could also have been sampled directly: weight the two (power heuristic)
       float wE = 1.0;
@@ -467,9 +491,86 @@ void main() {
       }
     }
   }
-  vec4 prev = texelFetch(u_prev, ivec2(gl_FragCoord.xy), 0);
+  ivec2 px = ivec2(gl_FragCoord.xy);
+  vec4 prev = texelFetch(u_prev, px, 0);
   float w = u_blend > 0.0 ? u_blend : 1.0 / float(u_frame + 1);
   outColor = vec4(mix(prev.rgb, L, w), 1.0);
+  float lum = dot(L / max(gA, vec3(0.02)), vec3(0.2126, 0.7152, 0.0722));
+  outG1 = mix(texelFetch(u_prevG1, px, 0), vec4(gN, gZ), w);
+  outG2 = mix(texelFetch(u_prevG2, px, 0), vec4(gA, min(lum * lum, 1e4)), w);
+}`;
+
+// Edge-aware a-trous filter (a simple SVGF without the temporal part). Four passes with growing gaps smooth the
+// lighting (the color divided by the surface albedo, so textures and colors stay sharp) but stop at edges in normal,
+// distance and brightness. The brightness tolerance comes from each pixel's own noise estimate, which shrinks as
+// samples add up, so the filter fades out by itself and the picture still converges to the exact result.
+export const DENOISE_FRAG = `#version 300 es
+precision highp float;
+uniform sampler2D u_in;     // first pass: the accumulated color; later passes: the filtered lighting
+uniform sampler2D u_color;  // the accumulated color
+uniform sampler2D u_g1;     // normal, distance
+uniform sampler2D u_g2;     // albedo, second moment of the lighting's luminance
+uniform int u_step;          // gap between taps: 1, 2, 4, 8
+uniform int u_first;         // 1: divide the input by the albedo
+uniform int u_last;          // 1: multiply the result by the albedo
+uniform float u_spp;
+uniform float u_rawMix;      // last pass: how much of the unfiltered picture to show (rises to 1 as samples add up)
+out vec4 outColor;
+
+float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 albedo(ivec2 q) { return max(texelFetch(u_g2, q, 0).rgb, vec3(0.02)); }
+vec3 load(ivec2 q) {
+  vec3 c = texelFetch(u_in, q, 0).rgb;
+  return u_first == 1 ? c / albedo(q) : c;
+}
+
+void main() {
+  ivec2 p = ivec2(gl_FragCoord.xy);
+  ivec2 size = textureSize(u_in, 0);
+  vec4 g1 = texelFetch(u_g1, p, 0);
+  vec3 n = g1.xyz / max(length(g1.xyz), 1e-4);
+  vec3 c = load(p);
+  float lc = lum(c);
+  // Noise in the pixel's average, over its 3x3 neighborhood (so a pixel whose few samples all came out dark does not
+  // count as noise-free): from each pixel's own samples once there are a few, from the spread between pixels before.
+  float s1 = 0.0;
+  float s2 = 0.0;
+  float tv = 0.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      ivec2 q = clamp(p + ivec2(x, y), ivec2(0), size - 1);
+      float l = lum(texelFetch(u_color, q, 0).rgb / albedo(q));
+      s1 += l;
+      s2 += l * l;
+      tv += max(texelFetch(u_g2, q, 0).a - l * l, 0.0);
+    }
+  }
+  s1 /= 9.0;
+  float var = u_spp >= 4.0 ? tv / 9.0 / u_spp : max(s2 / 9.0 - s1 * s1, 0.0);
+  float sigL = 2.0 * sqrt(var) + 1e-3;
+  float sigZ = 0.03 * max(g1.w, 0.1) * float(u_step);
+
+  vec3 sum = vec3(0.0);
+  float wsum = 0.0;
+  for (int y = -2; y <= 2; y++) {
+    for (int x = -2; x <= 2; x++) {
+      ivec2 q = p + ivec2(x, y) * u_step;
+      if (q.x < 0 || q.y < 0 || q.x >= size.x || q.y >= size.y) continue;
+      vec4 h1 = texelFetch(u_g1, q, 0);
+      vec3 nq = h1.xyz / max(length(h1.xyz), 1e-4);
+      vec3 cq = load(q);
+      float k = (x == 0 ? 0.375 : (abs(x) == 1 ? 0.25 : 0.0625)) * (y == 0 ? 0.375 : (abs(y) == 1 ? 0.25 : 0.0625));
+      float wn = pow(max(dot(n, nq), 0.0), 64.0);
+      float wz = exp(-abs(g1.w - h1.w) / sigZ);
+      float wl = exp(-abs(lum(cq) - lc) / sigL);
+      float w = k * wn * wz * wl;
+      sum += cq * w;
+      wsum += w;
+    }
+  }
+  vec3 outc = wsum > 1e-6 ? sum / wsum : c;
+  if (u_last == 1) outc = mix(outc * albedo(p), texelFetch(u_color, p, 0).rgb, u_rawMix);
+  outColor = vec4(outc, 1.0);
 }`;
 
 export const DISPLAY_FRAG = `#version 300 es

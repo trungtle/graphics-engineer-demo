@@ -1,5 +1,5 @@
 import './style.css';
-import { VERT, TRACE_FRAG, DISPLAY_FRAG } from './render/shaders';
+import { VERT, TRACE_FRAG, DISPLAY_FRAG, DENOISE_FRAG } from './render/shaders';
 import {
   CAMERA_PITCH_MAX,
   CAMERA_PITCH_MIN,
@@ -70,9 +70,12 @@ function program(vs: string, fs: string): WebGLProgram {
 }
 const traceProg = program(VERT, TRACE_FRAG);
 const dispProg = program(VERT, DISPLAY_FRAG);
+const denoiseProg = program(VERT, DENOISE_FRAG);
 const loc = (p: WebGLProgram, n: string) => gl.getUniformLocation(p, n);
 const uTrace = {
   prev: loc(traceProg, 'u_prev'),
+  prevG1: loc(traceProg, 'u_prevG1'),
+  prevG2: loc(traceProg, 'u_prevG2'),
   res: loc(traceProg, 'u_res'),
   frame: loc(traceProg, 'u_frame'),
   bounces: loc(traceProg, 'u_bounces'),
@@ -108,11 +111,29 @@ const uTrace = {
   bvh: loc(traceProg, 'u_bvh'),
   tri: loc(traceProg, 'u_tri'),
 };
+const uDen = {
+  in: loc(denoiseProg, 'u_in'),
+  color: loc(denoiseProg, 'u_color'),
+  g1: loc(denoiseProg, 'u_g1'),
+  g2: loc(denoiseProg, 'u_g2'),
+  step: loc(denoiseProg, 'u_step'),
+  first: loc(denoiseProg, 'u_first'),
+  last: loc(denoiseProg, 'u_last'),
+  spp: loc(denoiseProg, 'u_spp'),
+  rawMix: loc(denoiseProg, 'u_rawMix'),
+};
 const uDisp = { tex: loc(dispProg, 'u_tex'), res: loc(dispProg, 'u_res'), dim: loc(dispProg, 'u_dim'), off: loc(dispProg, 'u_off') };
 gl.bindVertexArray(gl.createVertexArray());
 
-type Target = { tex: WebGLTexture; fbo: WebGLFramebuffer };
+/** g1, g2: the denoiser's extra layers (normal + distance, albedo + second moment), only on the main view's targets */
+type Target = { tex: WebGLTexture; fbo: WebGLFramebuffer; g1?: WebGLTexture; g2?: WebGLTexture };
 let targets: Target[] = [];
+let denoiseTargets: Target[] = [];
+// The denoiser: on by default; ?denoise=0 or the d key shows the raw samples instead.
+let denoise = params.get('denoise') !== '0';
+const DENOISE_STEPS = [1, 2, 4, 8];
+/** samples per pixel over which the filtered picture hands over to the raw one */
+const DENOISE_FADE = [8, 96];
 let cur = 0;
 let rw = 0;
 let rh = 0;
@@ -207,7 +228,7 @@ let fpCur = 0;
 let fpFrames = 0;
 let fpRng = 0;
 
-function makeTarget(w: number, h: number): Target {
+function floatTex(w: number, h: number): WebGLTexture {
   const tex = gl.createTexture()!;
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, gl.RGBA, texType, null);
@@ -216,10 +237,26 @@ function makeTarget(w: number, h: number): Target {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return tex;
+}
+
+function makeTarget(w: number, h: number, withLayers = false): Target {
+  const tex = floatTex(w, h);
   const fbo = gl.createFramebuffer()!;
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-  return { tex, fbo };
+  if (!withLayers) return { tex, fbo };
+  const g1 = floatTex(w, h);
+  const g2 = floatTex(w, h);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, g1, 0);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT2, gl.TEXTURE_2D, g2, 0);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2]);
+  return { tex, fbo, g1, g2 };
+}
+
+function freeTarget(t: Target) {
+  for (const x of [t.tex, t.g1, t.g2]) if (x) gl.deleteTexture(x);
+  gl.deleteFramebuffer(t.fbo);
 }
 
 function resize() {
@@ -233,13 +270,11 @@ function resize() {
     canvas.height = ch;
   }
   if (w !== rw || h !== rh) {
-    for (const t of targets) {
-      gl.deleteTexture(t.tex);
-      gl.deleteFramebuffer(t.fbo);
-    }
+    for (const t of [...targets, ...denoiseTargets]) freeTarget(t);
     rw = w;
     rh = h;
-    targets = [makeTarget(w, h), makeTarget(w, h)];
+    targets = [makeTarget(w, h, true), makeTarget(w, h, true)];
+    denoiseTargets = [makeTarget(w, h), makeTarget(w, h)];
     frame = 0;
   }
 }
@@ -465,6 +500,7 @@ window.addEventListener('keydown', (e) => {
     ui.syncBounces();
     reset();
   }
+  if (e.key === 'd') denoise = !denoise;
   if (e.key === 'n') {
     nee = !nee;
     reset();
@@ -523,12 +559,16 @@ stations.register({
 // Hook for later UI work and manual testing from the console.
 (window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, stations, setBench, bench: mirrors, setModel, water, picker,
   /** debug: the accumulated linear image (rgba floats, bottom row first) and how many samples it holds */
-  capture: () => {
+  capture: (filtered = false) => {
     const buf = new Float32Array(rw * rh * 4);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, targets[cur].fbo);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, filtered ? denoiseTargets[(DENOISE_STEPS.length - 1) % 2].fbo : targets[cur].fbo);
     gl.readPixels(0, 0, rw, rh, gl.RGBA, gl.FLOAT, buf);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     return { w: rw, h: rh, spp: frame, data: buf };
+  },
+  samples: () => frame,
+  setDenoise: (on: boolean) => {
+    denoise = on;
   },
   setNee: (on: boolean) => {
     nee = on;
@@ -601,6 +641,14 @@ function tracePass(
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, src.tex);
   gl.uniform1i(uTrace.prev, 0);
+  // the denoiser's layers (the photon inset has none: it reads its color again, and the extra outputs are dropped)
+  gl.activeTexture(gl.TEXTURE4);
+  gl.bindTexture(gl.TEXTURE_2D, src.g1 ?? src.tex);
+  gl.activeTexture(gl.TEXTURE5);
+  gl.bindTexture(gl.TEXTURE_2D, src.g2 ?? src.tex);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.uniform1i(uTrace.prevG1, 4);
+  gl.uniform1i(uTrace.prevG2, 5);
   gl.uniform2f(uTrace.res, w, h);
   gl.uniform1i(uTrace.frame, frameIdx);
   gl.uniform1f(uTrace.blend, blend);
@@ -658,6 +706,40 @@ function drawPhotonView(pose: { pos: [number, number, number]; fwd: [number, num
   gl.disable(gl.SCISSOR_TEST);
 }
 
+/** Run the a-trous passes over the accumulated picture; returns the texture to show. */
+function denoised(spp: number): WebGLTexture {
+  const src = targets[cur];
+  gl.useProgram(denoiseProg);
+  gl.viewport(0, 0, rw, rh);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, src.tex);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, src.g1!);
+  gl.activeTexture(gl.TEXTURE3);
+  gl.bindTexture(gl.TEXTURE_2D, src.g2!);
+  gl.uniform1i(uDen.color, 1);
+  gl.uniform1i(uDen.g1, 2);
+  gl.uniform1i(uDen.g2, 3);
+  gl.uniform1i(uDen.in, 0);
+  gl.uniform1f(uDen.spp, Math.max(1, spp));
+  // a quick clean preview first; the filter's slight blur then fades out so the picture converges to the exact result
+  const t = Math.min(1, Math.max(0, (spp - DENOISE_FADE[0]) / (DENOISE_FADE[1] - DENOISE_FADE[0])));
+  gl.uniform1f(uDen.rawMix, t * t * (3 - 2 * t));
+  let input = src.tex;
+  DENOISE_STEPS.forEach((step, i) => {
+    const out = denoiseTargets[i % 2];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, input);
+    gl.uniform1i(uDen.step, step);
+    gl.uniform1i(uDen.first, i === 0 ? 1 : 0);
+    gl.uniform1i(uDen.last, i === DENOISE_STEPS.length - 1 ? 1 : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    input = out.tex;
+  });
+  return input;
+}
+
 function tick(now: number) {
   // nothing to draw while the canvas is hidden (another station is showing)
   if (!canvas.isConnected || canvas.clientWidth === 0 || canvas.clientHeight === 0) {
@@ -700,10 +782,12 @@ function tick(now: number) {
   cur = 1 - cur;
   frame++;
 
+  const shown = denoise ? denoised(bench && now < benchLiveUntil ? 8 : frame) : targets[cur].tex;
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.useProgram(dispProg);
-  gl.bindTexture(gl.TEXTURE_2D, targets[cur].tex);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, shown);
   gl.uniform1i(uDisp.tex, 0);
   dim += ((photon?.enabled ? PHOTON_DIM : 1) - dim) * 0.12;
   gl.uniform1f(uDisp.dim, dim);
@@ -724,7 +808,7 @@ function tick(now: number) {
     hud.textContent =
       `${renderer}\n` +
       `format ${useF32 ? 'RGBA32F' : 'RGBA16F'}  f32:${!!extF32} f16:${!!extF16} f32lin:${!!extLin} timer:${!!extTimer}\n` +
-      `target ${rw}x${rh} (scale ${scale})  bounces ${scene.bounces}  light sampling ${nee ? 'on' : 'off'} (n)\n` +
+      `target ${rw}x${rh} (scale ${scale})  bounces ${scene.bounces}  light sampling ${nee ? 'on' : 'off'} (n)  denoiser ${denoise ? 'on' : 'off'} (d)\n` +
       `frame ${ema.toFixed(1)} ms (${(1000 / ema).toFixed(0)} fps)  gpu ${Number.isNaN(gpuMs) ? 'n/a' : gpuMs.toFixed(1) + ' ms'}  spp ${frame}  ~${((rw * rh * frame * (scene.bounces + 1)) / 1e9).toFixed(2)}B rays\n` +
       `tap: pick (${pickedText || 'none'})   s: scale 1/0.5   keys 0-8: bounces   q/w/e: cycle object material   ?fmt=16: half-float`;
   }
