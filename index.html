@@ -45,6 +45,27 @@
         </section>
 
         <section id="controls" aria-label="Controls"></section>
+
+        <section id="ray-panel" aria-label="Ray tracing sketch">
+          <h2>Tracing a ray</h2>
+          <svg class="ray-sketch" viewBox="0 0 300 70" role="img" aria-label="Ray tracing sketch: a ray from the camera through a pixel hits the ball, then bounces to the lamp">
+  <line x1="70" y1="62" x2="292" y2="62" stroke="var(--line)" stroke-width="2"/>
+  <rect x="166" y="3" width="32" height="5" rx="2" fill="var(--c-le)"/>
+  <text x="204" y="9" font-size="9" fill="var(--muted)">lamp</text>
+  <circle cx="200" cy="46" r="16" fill="var(--line)" stroke="var(--muted)" stroke-width="1"/>
+  <line x1="24" y1="36" x2="146" y2="2" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+  <line x1="24" y1="36" x2="117" y2="62" stroke="var(--c-int)" stroke-width="1.5"/>
+  <line x1="117" y1="62" x2="170" y2="18" stroke="var(--c-le)" stroke-width="1" stroke-dasharray="3 3"/>
+  <line x1="24" y1="36" x2="187.5" y2="36" stroke="var(--c-int)" stroke-width="2"/>
+  <line x1="187.5" y1="36" x2="182" y2="9" stroke="var(--c-le)" stroke-width="2"/>
+  <line x1="60" y1="17" x2="60" y2="55" stroke="var(--ink)" stroke-width="1.5"/>
+  <circle cx="60" cy="26" r="2" fill="var(--ink)"/><circle cx="60" cy="36" r="2.5" fill="var(--c-int)"/><circle cx="60" cy="46" r="2" fill="var(--ink)"/>
+  <rect x="6" y="29" width="14" height="14" rx="3" fill="var(--ink)"/>
+  <path d="M20 32 L26 29 L26 43 L20 40 Z" fill="var(--ink)"/>
+  <text x="6" y="55" font-size="9" fill="var(--muted)">camera</text>
+  <text x="46" y="14" font-size="9" fill="var(--muted)">pixel</text>
+</svg>
+        </section>
       </aside>
       </div>
 

@@ -54,6 +54,7 @@ export function initControls(opts: {
   render?: { nee: boolean; denoise: boolean; onNee: (on: boolean) => void; onDenoise: (on: boolean) => void };
 }): Controls {
   const root = document.getElementById('controls')!;
+  const stats = document.getElementById('stage-stats')!;
   root.innerHTML = `
     <div class="ctl-row">
       <div class="render-toggles">
@@ -88,6 +89,9 @@ export function initControls(opts: {
       <div class="cam-row"><span>Aperture</span><input id="cam-ap" class="slider" type="range" min="${APERTURE_RANGE[0] * 100}" max="${APERTURE_RANGE[1] * 100}" step="1" aria-label="Aperture" /><b id="ap-val"></b></div>
       <div class="cam-row"><span>Focus</span><input id="cam-focus" class="slider" type="range" min="${FOCUS_RANGE[0] * 10}" max="${FOCUS_RANGE[1] * 10}" step="1" aria-label="Focus distance" /><b id="focus-val"></b></div>
     </div>`;
+
+  // samples, rays and the convergence graph sit at the top of the panel, just under the rendering equation
+  root.prepend(stats);
 
   const slider = root.querySelector<HTMLInputElement>('#bounces')!;
   const bval = root.querySelector<HTMLElement>('#bval')!;
@@ -128,6 +132,16 @@ export function initControls(opts: {
     neeBtn.hidden = true;
     denBtn.hidden = true;
   }
+  // the ray sketch takes whatever height the controls leave; with less than a readable amount it steps aside
+  const rayPanel = document.getElementById('ray-panel')!;
+  const panelEl = document.getElementById('panel')!;
+  const fitSketch = () => {
+    rayPanel.hidden = false;
+    if (panelEl.clientHeight > 0 && (panelEl.scrollHeight > panelEl.clientHeight + 1 || rayPanel.offsetHeight < 100)) rayPanel.hidden = true;
+  };
+  window.addEventListener('resize', fitSketch);
+  requestAnimationFrame(fitSketch);
+
   // camera: field of view, aperture (depth of field) and focus
   const fovEl = root.querySelector<HTMLInputElement>('#cam-fov')!;
   const apEl = root.querySelector<HTMLInputElement>('#cam-ap')!;
