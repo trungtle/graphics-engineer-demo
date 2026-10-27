@@ -52,10 +52,12 @@ export interface Camera {
   right: Vec3;
   up: Vec3;
   fwd: Vec3;
+  /** half the field of view (tangent of the half angle, on the shorter side of the picture) */
+  th: number;
 }
 
 /** Orbit camera around the box center. yaw/pitch = 0 is straight on from +z. Mirrors main.ts uniforms. */
-export function makeCamera(yaw = 0, pitch = 0): Camera {
+export function makeCamera(yaw = 0, pitch = 0, th = CAMERA_TH): Camera {
   const cp = Math.cos(pitch);
   const pos: Vec3 = [
     CAMERA_DIST * Math.sin(yaw) * cp,
@@ -65,24 +67,24 @@ export function makeCamera(yaw = 0, pitch = 0): Camera {
   const fwd = norm(mul(pos, -1));
   const right = norm(cross(fwd, [0, 1, 0]));
   const up = cross(right, fwd);
-  return { pos, right, up, fwd };
+  return { pos, right, up, fwd, th };
 }
 
 /** Camera at `pos` looking along `dir` (used for the photon's first-person view). */
-export function cameraLookAlong(pos: Vec3, dir: Vec3): Camera {
+export function cameraLookAlong(pos: Vec3, dir: Vec3, th = CAMERA_TH): Camera {
   const fwd = norm(dir);
   const upHint: Vec3 = Math.abs(fwd[1]) > 0.97 ? [0, 0, 1] : [0, 1, 0];
   const right = norm(cross(fwd, upHint));
   const up = cross(right, fwd);
-  return { pos, right, up, fwd };
+  return { pos, right, up, fwd, th };
 }
 
-export const cameraOf = (scene: SceneState): Camera => makeCamera(scene.camera.yaw, scene.camera.pitch);
+export const cameraOf = (scene: SceneState): Camera => makeCamera(scene.camera.yaw, scene.camera.pitch, scene.camera.th);
 
 /** Direction of the view ray through a screen position in [-1,1] (x right, y up). */
 export function rayDir(ndcX: number, ndcY: number, aspect: number, cam: Camera): Vec3 {
-  const sx = ndcX * CAMERA_TH * Math.max(aspect, 1);
-  const sy = (ndcY * CAMERA_TH) / Math.min(aspect, 1);
+  const sx = ndcX * cam.th * Math.max(aspect, 1);
+  const sy = (ndcY * cam.th) / Math.min(aspect, 1);
   return norm(add(add(cam.fwd, mul(cam.right, sx)), mul(cam.up, sy)));
 }
 
@@ -101,8 +103,8 @@ export function project(p: Vec3, aspect: number, cam: Camera): [number, number] 
   const d = sub(p, cam.pos);
   const z = dot(d, cam.fwd);
   return [
-    dot(d, cam.right) / z / (CAMERA_TH * Math.max(aspect, 1)),
-    (dot(d, cam.up) / z) * Math.min(aspect, 1) / CAMERA_TH,
+    dot(d, cam.right) / z / (cam.th * Math.max(aspect, 1)),
+    (dot(d, cam.up) / z) * Math.min(aspect, 1) / cam.th,
   ];
 }
 

@@ -29,7 +29,11 @@ export interface SceneState {
   /** the lamp the controls change (always one of `lights`; the last one tapped or dragged) */
   light: LightState;
   /** orbit camera angles in radians (0,0 = straight on) */
-  camera: { yaw: number; pitch: number };
+  /**
+   * orbit angles in radians (0,0 = straight on); th = tan of half the field of view; aperture = lens radius
+   * (0 = pinhole, everything sharp); focus = distance to the sharp plane along the view direction
+   */
+  camera: { yaw: number; pitch: number; th: number; aperture: number; focus: number };
   /** material of each wall of the box (glass is not offered for walls) */
   walls: Record<WallId, MaterialId>;
   /** a triangle model (bunny, dragon) standing in for the balls; it takes object 0's color and material. null = the balls */
@@ -48,6 +52,10 @@ export const LIGHT_MAX_HALF = 0.42;
 export const CAMERA_YAW_LIMIT = 0.5;
 export const CAMERA_PITCH_MIN = -0.2;
 export const CAMERA_PITCH_MAX = 0.3;
+/** camera control ranges: field of view in degrees, aperture diameter in metres (the box is 2 m), focus in metres */
+export const FOV_RANGE: [number, number] = [25, 80];
+export const APERTURE_RANGE: [number, number] = [0, 0.4];
+export const FOCUS_RANGE: [number, number] = [1.6, 6];
 
 export const LIGHT_COLORS: { name: string; rgb: [number, number, number]; swatch: string }[] = [
   { name: 'Warm white', rgb: [18, 16, 13], swatch: '#ffd9a0' },
@@ -122,7 +130,7 @@ export function defaultScene(): SceneState {
     lights,
     light: lights[0],
     walls: plainWalls(),
-    camera: { yaw: 0, pitch: 0 },
+    camera: { yaw: 0, pitch: 0, th: 0.45, aperture: 0, focus: 3.4 },
     mesh: null,
   };
 }

@@ -27,6 +27,8 @@ uniform vec3 u_camUp;
 uniform vec3 u_camFwd;
 uniform int u_inside;       // 1: camera is inside the box (photon view), no front-plane entry
 uniform float u_th;         // tan-ish half field of view
+uniform float u_aperture;   // lens radius (0: pinhole)
+uniform float u_focus;      // distance to the sharp plane, along the view direction
 uniform float u_blend;      // >0: fixed accumulation weight (moving camera); 0: 1/(frame+1)
 // ---- optical bench (the Mirrors puzzle as a 3D tabletop) ----
 uniform int u_bench;                // 1: draw the bench instead of the Cornell box
@@ -374,6 +376,14 @@ void main() {
   float th = u_th;
   vec3 ro = u_camPos;
   vec3 rd = normalize(u_camFwd + u_camRight * (uv.x * th * max(aspect, 1.0)) + u_camUp * (uv.y * th / min(aspect, 1.0)));
+  // thin lens: start from a random point on the lens and aim at where the pinhole ray meets the sharp plane
+  if (u_aperture > 0.0) {
+    vec3 sharp = ro + rd * (u_focus / dot(rd, u_camFwd));
+    float r = u_aperture * sqrt(rnd());
+    float a = 6.2831853 * rnd();
+    ro += (u_camRight * cos(a) + u_camUp * sin(a)) * r;
+    rd = normalize(sharp - ro);
+  }
 
   float t0 = (1.0 - ro.z) / rd.z;
   vec3 p0 = ro + rd * t0;

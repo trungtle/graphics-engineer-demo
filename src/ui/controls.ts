@@ -1,4 +1,15 @@
-import { clampLight, LIGHT_COLORS, LIGHT_MAX_HALF, LIGHT_MIN_HALF, setLights, type LightSetup, type SceneState } from '../scene';
+import {
+  APERTURE_RANGE,
+  clampLight,
+  FOCUS_RANGE,
+  FOV_RANGE,
+  LIGHT_COLORS,
+  LIGHT_MAX_HALF,
+  LIGHT_MIN_HALF,
+  setLights,
+  type LightSetup,
+  type SceneState,
+} from '../scene';
 import type { Term } from './equation';
 import type { ModelId } from '../mesh';
 
@@ -29,6 +40,10 @@ export interface Controls {
   syncModel(): void;
   /** Show whether light sampling and the denoiser are on (after a change made elsewhere, e.g. the keyboard). */
   syncRender(nee: boolean, denoise: boolean): void;
+  /** Re-read the camera's field of view, aperture and focus into the sliders. */
+  syncCamera(): void;
+  /** The camera sliders are showing (a tap on the picture then focuses there). */
+  cameraOpen(): boolean;
   /** Big attract-mode caption in the caption bar (null restores the normal hint). Normal captions are ignored while idle. */
   idleCaption(text: string | null): void;
 }
@@ -49,17 +64,32 @@ export function initControls(opts: {
       <div class="render-toggles">
         <button class="toggle" id="t-nee" type="button" aria-pressed="false"><i></i>Light sampling</button>
         <button class="toggle" id="t-denoise" type="button" aria-pressed="false"><i></i>Denoiser</button>
+        <button class="toggle cam" id="t-camera" type="button" aria-pressed="false"><i></i>Camera</button>
       </div>
       <button id="restart" class="btn" type="button">Restart</button>
     </div>
-    <div class="seg" role="radiogroup" aria-label="Model">
+    <div class="cam-ctl" hidden>
+      <div class="ctl-block">
+        <div class="ctl-head"><span class="ctl-title">Field of view</span><span class="ctl-val" id="fov-val"></span></div>
+        <input id="cam-fov" class="slider" type="range" min="${FOV_RANGE[0]}" max="${FOV_RANGE[1]}" step="1" aria-label="Field of view" />
+      </div>
+      <div class="ctl-block">
+        <div class="ctl-head"><span class="ctl-title">Aperture</span><span class="ctl-val" id="ap-val"></span></div>
+        <input id="cam-ap" class="slider" type="range" min="${APERTURE_RANGE[0] * 100}" max="${APERTURE_RANGE[1] * 100}" step="1" aria-label="Aperture" />
+      </div>
+      <div class="ctl-block">
+        <div class="ctl-head"><span class="ctl-title">Focus distance</span><span class="ctl-val" id="focus-val"></span></div>
+        <input id="cam-focus" class="slider" type="range" min="${FOCUS_RANGE[0] * 10}" max="${FOCUS_RANGE[1] * 10}" step="1" aria-label="Focus distance" />
+      </div>
+    </div>
+    <div class="seg scene-ctl" role="radiogroup" aria-label="Model">
       ${MODELS.map((m) => `<button class="seg-btn" type="button" role="radio" data-model="${m.id}">${m.name}</button>`).join('')}
     </div>
-    <div class="ctl-block">
+    <div class="ctl-block scene-ctl">
       <div class="ctl-head"><span class="ctl-title t-li">Light bounces</span><span class="ctl-val t-li" id="bval"></span></div>
       <input id="bounces" class="slider" type="range" min="0" max="8" step="1" aria-label="Light bounces" />
     </div>
-    <div class="ctl-block lamp">
+    <div class="ctl-block lamp scene-ctl">
       <div class="ctl-head"><span class="ctl-title t-le">Lamp</span>
         <div class="seg seg-mini" role="radiogroup" aria-label="Number of lamps">
           ${[1, 2, 3].map((n) => `<button class="seg-btn lamps-btn" type="button" role="radio" data-n="${n}" aria-label="${n} lamp${n > 1 ? 's' : ''}">${'<i></i>'.repeat(n)}</button>`).join('')}
@@ -114,6 +144,49 @@ export function initControls(opts: {
     neeBtn.hidden = true;
     denBtn.hidden = true;
   }
+  // camera: field of view, aperture (depth of field) and focus; the sliders take the place of the scene controls
+  const camBtn = root.querySelector<HTMLButtonElement>('#t-camera')!;
+  const camCtl = root.querySelector<HTMLElement>('.cam-ctl')!;
+  const sceneCtl = Array.from(root.querySelectorAll<HTMLElement>('.scene-ctl'));
+  const fovEl = root.querySelector<HTMLInputElement>('#cam-fov')!;
+  const apEl = root.querySelector<HTMLInputElement>('#cam-ap')!;
+  const focusEl = root.querySelector<HTMLInputElement>('#cam-focus')!;
+  const fill = (el: HTMLInputElement) =>
+    el.style.setProperty('--fill', `${((Number(el.value) - Number(el.min)) / (Number(el.max) - Number(el.min))) * 100}%`);
+  const syncCamera = () => {
+    const cam = opts.scene.camera;
+    const fov = Math.round((2 * Math.atan(cam.th) * 180) / Math.PI);
+    fovEl.value = String(fov);
+    apEl.value = String(Math.round(cam.aperture * 2 * 100));
+    focusEl.value = String(Math.round(cam.focus * 10));
+    root.querySelector('#fov-val')!.textContent = `${fov}\u00b0`;
+    root.querySelector('#ap-val')!.textContent = cam.aperture > 0 ? `${Math.round(cam.aperture * 2 * 100)} cm` : 'pinhole';
+    root.querySelector('#focus-val')!.textContent = `${cam.focus.toFixed(1)} m`;
+    [fovEl, apEl, focusEl].forEach(fill);
+  };
+  const setCamOpen = (open: boolean) => {
+    camBtn.setAttribute('aria-pressed', String(open));
+    camCtl.hidden = !open;
+    sceneCtl.forEach((el) => (el.hidden = open));
+  };
+  camBtn.addEventListener('click', () => setCamOpen(camBtn.getAttribute('aria-pressed') !== 'true'));
+  fovEl.addEventListener('input', () => {
+    opts.scene.camera.th = Math.tan(((Number(fovEl.value) / 2) * Math.PI) / 180);
+    syncCamera();
+    opts.reset();
+  });
+  apEl.addEventListener('input', () => {
+    opts.scene.camera.aperture = Number(apEl.value) / 100 / 2;
+    syncCamera();
+    opts.reset();
+  });
+  focusEl.addEventListener('input', () => {
+    opts.scene.camera.focus = Number(focusEl.value) / 10;
+    syncCamera();
+    opts.reset();
+  });
+  syncCamera();
+
   root.querySelector('#restart')!.addEventListener('click', () => {
     opts.reset();
     opts.onTerm?.('int');
@@ -199,6 +272,8 @@ export function initControls(opts: {
     syncLamp,
     syncModel,
     syncRender,
+    syncCamera,
+    cameraOpen: () => camBtn.getAttribute('aria-pressed') === 'true',
     idleCaption(text) {
       if (text === null) {
         setHint();

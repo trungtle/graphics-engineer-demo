@@ -250,6 +250,9 @@ h2 {
 .toggle[aria-pressed='true'] i { background: #22c55e; border-color: #22c55e; }
 .toggle:active { transform: scale(0.97); }
 .toggle[hidden] { display: none; }
+.toggle.cam[aria-pressed='true'] i { background: var(--c-fr); border-color: var(--c-fr); }
+.cam-ctl { display: flex; flex-direction: column; gap: var(--s-3); }
+.cam-ctl[hidden], .scene-ctl[hidden] { display: none; }
 @media (orientation: portrait) {
   .render-toggles { order: 0; flex-basis: auto; margin-left: auto; }
   .render-toggles + .btn { margin-left: 0; }

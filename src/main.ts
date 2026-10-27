@@ -4,6 +4,7 @@ import {
   CAMERA_PITCH_MAX,
   CAMERA_PITCH_MIN,
   CAMERA_YAW_LIMIT,
+  FOCUS_RANGE,
   clampLight,
   defaultScene,
   lightRadiance,
@@ -99,6 +100,8 @@ const uTrace = {
   camFwd: loc(traceProg, 'u_camFwd'),
   inside: loc(traceProg, 'u_inside'),
   th: loc(traceProg, 'u_th'),
+  aperture: loc(traceProg, 'u_aperture'),
+  focus: loc(traceProg, 'u_focus'),
   blend: loc(traceProg, 'u_blend'),
   bench: loc(traceProg, 'u_bench'),
   nPoly: loc(traceProg, 'u_nPoly'),
@@ -545,6 +548,15 @@ canvas.addEventListener('pointerup', (e) => {
     photon.trace(nx, ny);
     return;
   }
+  if (h && ui.cameraOpen()) {
+    // with the camera controls open, a tap focuses there
+    const cam = cameraOf(scene);
+    scene.camera.focus = Math.min(FOCUS_RANGE[1], Math.max(FOCUS_RANGE[0], (h.p[0] - cam.pos[0]) * cam.fwd[0] + (h.p[1] - cam.pos[1]) * cam.fwd[1] + (h.p[2] - cam.pos[2]) * cam.fwd[2]));
+    ui.syncCamera();
+    reset();
+    lastTap = null;
+    return;
+  }
   if (h) {
     picker.select(cameraRay(nx, ny, aspect, cameraOf(scene)));
     eq.highlight(h.surface === 'light' || h.emissive ? 'le' : 'fr');
@@ -602,6 +614,7 @@ stations.register({
     ui.syncBounces();
     ui.syncLamp();
     ui.syncModel();
+    ui.syncCamera();
   },
   onLeave: () => photon?.setEnabled(false),
 });
@@ -728,6 +741,7 @@ function tracePass(
   cam: Camera,
   th: number,
   inside: boolean,
+  lens = { aperture: 0, focus: 1 },
 ) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
   gl.viewport(0, 0, w, h);
@@ -747,6 +761,8 @@ function tracePass(
   gl.uniform1i(uTrace.frame, frameIdx);
   gl.uniform1f(uTrace.blend, blend);
   gl.uniform1f(uTrace.th, th);
+  gl.uniform1f(uTrace.aperture, lens.aperture);
+  gl.uniform1f(uTrace.focus, lens.focus);
   gl.uniform1i(uTrace.inside, inside ? 1 : 0);
   uploadBench(bench);
   bindMesh();
@@ -903,7 +919,8 @@ function tick(now: number) {
     tracePass(targets[cur], targets[1 - cur], rw, rh, frame, live ? 0.18 : 0, benchCamera(), BENCH_TH, true);
   } else {
     benchWasLive = false;
-    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cameraOf(scene), 0.45, false);
+    const cam = cameraOf(scene);
+    tracePass(targets[cur], targets[1 - cur], rw, rh, frame, 0, cam, cam.th, false, scene.camera);
   }
   raysTotal += rw * rh * (scene.bounces + 1);
   if (queryOpen && extTimer) {

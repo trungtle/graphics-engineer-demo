@@ -93,7 +93,7 @@ describe('orbit camera and lamp', () => {
   it('picking stays consistent with projection after orbiting', () => {
     for (const [yaw, pitch] of [[0.3, 0], [-0.4, 0.2], [0.5, -0.15]]) {
       const s = defaultScene();
-      s.camera = { yaw, pitch };
+      s.camera = { ...s.camera, yaw, pitch };
       s.objects.forEach((o, i) => {
         const [x, y] = project(o.pos, ASPECT, cameraOf(s));
         const h = pick(x, y, ASPECT, s);
@@ -142,5 +142,33 @@ describe('several lamps', () => {
       expect(h?.surface).toBe('light');
       expect(h?.objectIndex).toBe(i);
     });
+  });
+});
+
+describe('field of view', () => {
+  it('picking stays consistent with projection when zoomed in or out', () => {
+    for (const th of [0.24, 0.45, 0.8]) {
+      const s = defaultScene();
+      s.camera.th = th;
+      s.objects.forEach((o, i) => {
+        const [x, y] = project(o.pos, ASPECT, cameraOf(s));
+        expect(Math.abs(x)).toBeLessThan(1.5);
+        const h = pick(x, y, ASPECT, s);
+        if (Math.abs(x) <= 1 && Math.abs(y) <= 1) {
+          expect(h?.surface).toBe('object');
+          expect(h?.objectIndex).toBe(i);
+        }
+      });
+    }
+  });
+
+  it('a narrower field of view makes things bigger on screen', () => {
+    const s = defaultScene();
+    const p: [number, number, number] = [0.5, 0, 0];
+    s.camera.th = 0.45;
+    const wide = project(p, ASPECT, cameraOf(s))[0];
+    s.camera.th = 0.25;
+    const narrow = project(p, ASPECT, cameraOf(s))[0];
+    expect(narrow).toBeCloseTo(wide * (0.45 / 0.25), 6);
   });
 });
