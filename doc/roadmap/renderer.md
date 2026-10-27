@@ -182,3 +182,5 @@ An edge-aware a-trous filter, a simple SVGF without the temporal part (`DENOISE_
 - **Toggle:** `?denoise=0` or the d key.
 
 First version tuning (2026-10-27): five passes with a 4x brightness tolerance were too blurry; the user noticed. Measured after tuning (error against a 4,000-sample reference): 4 spp 0.026 vs raw 0.051, 16 spp 0.014 vs 0.026, 64 spp 0.010 vs 0.013, identical from 128 spp. At 2-3 spp the filter has more error than raw, though it looks smoother. The shader now compiles fresh in 1.16 s on the desktop (texture lookup and three outputs); check the iPad.
+
+Switches (2026-10-27, user): "Light sampling" and "Denoiser" toggle buttons in the Light Lab stats row (`.render-toggles`), so the booth can show the difference without a keyboard. A green dot means on. Tapping Light sampling restarts the picture and lights the integral term. The n and d keys keep the buttons in sync. In portrait they sit beside Restart; in the narrow landscape panel they wrap onto their own line. The short-portrait split was also changed to 53/47, which fixes an 11 px overflow at 768x1024 left over from the lamp-count buttons. Six-viewport check clean.

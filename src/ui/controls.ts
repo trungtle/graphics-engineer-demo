@@ -27,6 +27,8 @@ export interface Controls {
   syncLamp(): void;
   /** Re-read which model is shown into the picker. */
   syncModel(): void;
+  /** Show whether light sampling and the denoiser are on (after a change made elsewhere, e.g. the keyboard). */
+  syncRender(nee: boolean, denoise: boolean): void;
   /** Big attract-mode caption in the caption bar (null restores the normal hint). Normal captions are ignored while idle. */
   idleCaption(text: string | null): void;
 }
@@ -36,12 +38,18 @@ export function initControls(opts: {
   reset: () => void;
   onTerm?: (t: Term) => void;
   onModel?: (id: ModelId) => void;
+  /** the two speed-ups: their switches and starting states */
+  render?: { nee: boolean; denoise: boolean; onNee: (on: boolean) => void; onDenoise: (on: boolean) => void };
 }): Controls {
   const root = document.getElementById('controls')!;
   root.innerHTML = `
     <div class="ctl-row">
       <div class="stat t-int"><span class="stat-num" id="spp">0</span><span class="stat-lab">samples per pixel</span></div>
       <div class="stat t-int"><span class="stat-num" id="rays">0</span><span class="stat-lab">rays traced</span></div>
+      <div class="render-toggles">
+        <button class="toggle" id="t-nee" type="button" aria-pressed="false"><i></i>Light sampling</button>
+        <button class="toggle" id="t-denoise" type="button" aria-pressed="false"><i></i>Denoiser</button>
+      </div>
       <button id="restart" class="btn" type="button">Restart</button>
     </div>
     <div class="seg" role="radiogroup" aria-label="Model">
@@ -81,6 +89,31 @@ export function initControls(opts: {
     opts.reset();
     opts.onTerm?.('li');
   });
+  // the two speed-ups, so the booth can show the difference without a keyboard
+  const neeBtn = root.querySelector<HTMLButtonElement>('#t-nee')!;
+  const denBtn = root.querySelector<HTMLButtonElement>('#t-denoise')!;
+  const syncRender = (nee: boolean, denoise: boolean) => {
+    neeBtn.setAttribute('aria-pressed', String(nee));
+    denBtn.setAttribute('aria-pressed', String(denoise));
+  };
+  if (opts.render) {
+    const r = opts.render;
+    syncRender(r.nee, r.denoise);
+    neeBtn.addEventListener('click', () => {
+      const on = neeBtn.getAttribute('aria-pressed') !== 'true';
+      neeBtn.setAttribute('aria-pressed', String(on));
+      r.onNee(on);
+      opts.onTerm?.('int');
+    });
+    denBtn.addEventListener('click', () => {
+      const on = denBtn.getAttribute('aria-pressed') !== 'true';
+      denBtn.setAttribute('aria-pressed', String(on));
+      r.onDenoise(on);
+    });
+  } else {
+    neeBtn.hidden = true;
+    denBtn.hidden = true;
+  }
   root.querySelector('#restart')!.addEventListener('click', () => {
     opts.reset();
     opts.onTerm?.('int');
@@ -165,6 +198,7 @@ export function initControls(opts: {
     syncBounces,
     syncLamp,
     syncModel,
+    syncRender,
     idleCaption(text) {
       if (text === null) {
         setHint();

@@ -226,7 +226,34 @@ h2 {
 /* ---- controls ---- */
 #controls { display: flex; flex-direction: column; gap: var(--s-3); }
 
-.ctl-row { display: flex; align-items: center; gap: var(--s-4); }
+.ctl-row { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; row-gap: var(--s-2); }
+
+/* light sampling and denoiser switches: beside Restart where there is room, their own line in the narrow panel */
+.render-toggles { display: flex; gap: var(--s-2); order: 3; flex-basis: 100%; }
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: 600 var(--fs-small) / 1 inherit;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.toggle i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; }
+.toggle[aria-pressed='true'] { color: var(--ink); border-color: var(--ink); }
+.toggle[aria-pressed='true'] i { background: #22c55e; border-color: #22c55e; }
+.toggle:active { transform: scale(0.97); }
+.toggle[hidden] { display: none; }
+@media (orientation: portrait) {
+  .render-toggles { order: 0; flex-basis: auto; margin-left: auto; }
+  .render-toggles + .btn { margin-left: 0; }
+}
 .stat { display: flex; flex-direction: column; min-width: 0; }
 .stat-num { font-size: calc(var(--fs-body) * 1.5); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .stat-lab { font-size: var(--fs-small); color: var(--muted); }
@@ -403,7 +430,7 @@ h2 {
 @media (orientation: portrait) and (max-height: 1100px) {
   #panel, .panel-col { gap: var(--s-3); }
   #panel > section, #panel > header { padding: var(--s-3) var(--s-4); }
-  .station { gap: var(--s-3); grid-template-rows: minmax(0, 55fr) minmax(0, 45fr); }
+  .station { gap: var(--s-3); grid-template-rows: minmax(0, 53fr) minmax(0, 47fr); }
   #tabs { margin-top: var(--s-3); }
 }
 

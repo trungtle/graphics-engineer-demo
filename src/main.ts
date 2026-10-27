@@ -368,7 +368,23 @@ const reset = () => {
   photon?.clear();
 };
 const eq = initEquation();
-const ui = initControls({ scene, reset, onTerm: (t) => eq.highlight(t), onModel: (id) => void setModel(id) });
+const ui = initControls({
+  scene,
+  reset,
+  onTerm: (t) => eq.highlight(t),
+  onModel: (id) => void setModel(id),
+  render: {
+    nee,
+    denoise,
+    onNee: (on) => {
+      nee = on;
+      reset();
+    },
+    onDenoise: (on) => {
+      denoise = on;
+    },
+  },
+});
 photon = initPhoton({
   stage: document.getElementById('viewport')!,
   view: canvas,
@@ -547,9 +563,13 @@ window.addEventListener('keydown', (e) => {
     ui.syncBounces();
     reset();
   }
-  if (e.key === 'd') denoise = !denoise;
+  if (e.key === 'd') {
+    denoise = !denoise;
+    ui.syncRender(nee, denoise);
+  }
   if (e.key === 'n') {
     nee = !nee;
+    ui.syncRender(nee, denoise);
     reset();
   }
   if (e.key === 's') {
@@ -616,9 +636,11 @@ stations.register({
   samples: () => frame,
   setDenoise: (on: boolean) => {
     denoise = on;
+    ui.syncRender(nee, denoise);
   },
   setNee: (on: boolean) => {
     nee = on;
+    ui.syncRender(nee, denoise);
     reset();
   },
 };
