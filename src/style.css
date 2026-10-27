@@ -634,3 +634,31 @@ body.idle #explain strong { color: var(--ink); }
   line-height: 1;
   cursor: pointer;
 }
+
+/* name of a tapped equation term, just below it */
+.term-tip {
+  position: fixed;
+  z-index: 50;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--tc, transparent), var(--shadow);
+}
+.term-tip::before {
+  content: '';
+  position: absolute;
+  left: calc(50% + var(--arrow, 0px));
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  transform: translateX(-50%) rotate(45deg);
+}
+.term-tip[hidden] { display: none; }
