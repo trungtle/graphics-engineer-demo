@@ -14,7 +14,6 @@ import { cameraLookAlong, cameraOf, ceilingPoint, pick, type Camera } from './re
 import { initControls } from './ui/controls';
 import { initEquation } from './ui/equation';
 import { initPhoton } from './ui/photon';
-import { initIdle } from './idle';
 import { initBench } from './ui/bench';
 import { initFluid } from './ui/fluid';
 import { BENCH_TH, BEAM_PALETTE, CYL_MAX, POLY_MAX, TARGET_H, TARGET_MAX, benchCamera, type BenchScene } from './bench';
@@ -440,8 +439,6 @@ window.addEventListener('keydown', (e) => {
   const oi = ['q', 'w', 'e'].indexOf(e.key);
   if (oi >= 0) cycleMaterial(oi);
 });
-// Attract mode: ?idle=<seconds> overrides the 45 s default (0 turns it off).
-const idleParam = params.get('idle');
 const stations = createStations({
   viewport: document.getElementById('viewport')!,
   tabs: document.getElementById('tabs')!,
@@ -486,22 +483,8 @@ stations.register({
   onReset: water.reset,
 });
 
-const idle = initIdle({
-  onStart: () => {
-    stations.resetAll();
-    stations.show('light');
-  },
-  scene,
-  reset,
-  ui,
-  eq,
-  photon,
-  totalRays: () => raysTotal,
-  timeoutSeconds: idleParam !== null && !Number.isNaN(Number(idleParam)) ? Number(idleParam) : 45,
-});
-
 // Hook for later UI work and manual testing from the console.
-(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, idle, stations, setBench, bench: mirrors, setModel, water };
+(window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, stations, setBench, bench: mirrors, setModel, water };
 
 let raysTotal = 0; // every ray the main view has traced since the page loaded
 let ema = 0;

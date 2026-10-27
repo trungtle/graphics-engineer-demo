@@ -7,6 +7,8 @@ large readable type from a couple of meters away. English only.
 
 ## Decisions
 
+- **Attract mode removed** (2026-10-27, user): the page no longer starts the idle show after 45 s, and `?idle=` is ignored. `src/idle.ts` (and the idle caption CSS) stays in the repo, unwired, in case it is wanted back. UI-004 stays recorded as done.
+
 - **No explanatory text in the UI; the presenter explains onsite** (2026-10-06, user decision, `5fdee61`): removed the careers strip (UI-005's code is deleted, see git history before this commit), the 'How a computer paints with light' tagline, the equation hint and term captions (the equation terms still glow, with no text), the caption under the bounce slider, the lamp hint, the default 'Try it' hint, and the descriptive messages for material taps, the lamp, view reset and photon-mode toggles. Kept on purpose, as readouts rather than tooltips: the photon result caption ('Hit light' / 'Hit object' / 'Miss' with colors), the All-samples running and final caption, and the attract-mode captions. The caption bar under the picture keeps its fixed height even when empty so the render never resizes.
 
 - **UI-006 hidden presenter panel dropped** (2026-10-06, user decision: not needed). Hooks that remain: `?debug` shows the device readout, `?idle=<seconds>` sets the attract-mode timeout (0 disables), `window.lightlab.idle.setTimeoutSeconds()`.
