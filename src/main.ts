@@ -32,6 +32,8 @@ const hud = document.getElementById('hud') as HTMLDivElement;
 const params = new URLSearchParams(location.search);
 // The readout is a dev/device-test aid: show it with ?debug .
 hud.hidden = !params.has('debug');
+// ?view=render shows only the Light Lab picture, with no controls (for embedding on another page).
+if (params.get('view') === 'render') document.body.classList.add('render-only');
 const glOrNull = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true });
 if (!glOrNull) {
   hud.hidden = false;

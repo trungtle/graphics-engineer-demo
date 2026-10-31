@@ -738,3 +738,18 @@ body.idle #explain strong { color: var(--ink); }
   .cam-row .slider { height: 30px; }
   #controls { gap: var(--s-2); }
 }
+
+/* ?view=render: only the Light Lab picture fills the window; every control and caption is hidden */
+body.render-only #app { padding: 0; grid-template-rows: minmax(0, 1fr); }
+body.render-only .station { gap: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: 'stage'; }
+body.render-only #stage { border-radius: 0; box-shadow: none; }
+body.render-only #panel,
+body.render-only #stage-stats,
+body.render-only #explain,
+body.render-only #tabs,
+body.render-only #photon-btn,
+body.render-only #photon-tools,
+body.render-only #photon-overlay,
+body.render-only #fp-frame,
+body.render-only #pick-overlay { display: none !important; }
+body.render-only #view { pointer-events: none; }
