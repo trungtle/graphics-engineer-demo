@@ -9,6 +9,7 @@ import {
   defaultScene,
   lightRadiance,
   MATERIALS,
+  setLights,
   WALLS,
   type MaterialId,
 } from './scene';
@@ -33,7 +34,8 @@ const params = new URLSearchParams(location.search);
 // The readout is a dev/device-test aid: show it with ?debug .
 hud.hidden = !params.has('debug');
 // ?view=render shows only the Light Lab picture, with no controls (for embedding on another page).
-if (params.get('view') === 'render') document.body.classList.add('render-only');
+const renderOnly = params.get('view') === 'render';
+if (renderOnly) document.body.classList.add('render-only');
 const glOrNull = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true });
 if (!glOrNull) {
   hud.hidden = false;
@@ -659,6 +661,13 @@ stations.register({
   onLeave: water.onLeave,
   onReset: water.reset,
 });
+
+// The render-only view shows off a harder scene: a glass dragon under the three colored lamps.
+if (renderOnly) {
+  setLights(scene, 3);
+  scene.objects[0].mat = 2;
+  void setModel('dragon');
+}
 
 // Hook for later UI work and manual testing from the console.
 (window as unknown as Record<string, unknown>).lightlab = { scene, reset, pick, stations, setBench, bench: mirrors, setModel, water, picker,
